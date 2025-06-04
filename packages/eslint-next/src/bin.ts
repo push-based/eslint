@@ -1,9 +1,9 @@
 #!/usr/bin/env ts-node
 
-import { getProjectsWithEslintTarget } from './src/nx';
+import { getProjectsWithEslintTarget } from './nx';
 import { gray, green } from 'ansis';
 import { lintAllProjects } from './index';
-import { mdRuleSummary, printRuleSummary } from './src/reporting';
+import { mdRuleSummary, printRuleSummary } from './reporting';
 
 /**
  * Main function to lint all projects.

@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/eslint-next"
+    },
+    {
+      "path": "./testing/vitest-setup"
+    },
+    {
+      "path": "./testing/setup"
+    },
+    {
+      "path": "./testing/utils"
+    }
+  ]
+}

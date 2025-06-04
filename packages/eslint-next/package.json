@@ -1,3 +1,65 @@
 {
-  "name": "@push-based/eslint-next"
+  "name": "@push-based/eslint-next",
+  "version": "0.1.0",
+  "description": "Effortlessly enable incremental migration of ESLint rules with this automated script.",
+  "keywords": [
+    "eslint",
+    "lint",
+    "migration",
+    "automation"
+  ],
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.cjs"
+    }
+  },
+  "bin": {
+    "eslint-next": "dist/bin.cjs"
+  },
+  "scripts": {},
+  "files": [
+    "dist",
+    "!**/*.tsbuildinfo"
+  ],
+  "dependencies": {
+    "yargs": "^17.7.2"
+  },
+  "nx": {
+    "name": "@push-based/eslint-next",
+    "targets": {
+      "unit-test": {
+        "executor": "@nx/vite:test",
+        "options": {
+          "config": "packages/{projectName}/vitest.unit.config.ts"
+        }
+      },
+      "integration-test": {
+        "executor": "@nx/vite:test",
+        "options": {
+          "config": "packages/{projectName}/vitest.integration.config.ts"
+        }
+      },
+      "eslint-next": {
+        "dependsOn": [
+          "build"
+        ],
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "node packages/eslint-next/dist/bin.cjs"
+        }
+      }
+    },
+    "tags": [
+      "package"
+    ]
+  }
 }

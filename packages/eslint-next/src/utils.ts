@@ -2,7 +2,7 @@ import { ESLint } from 'eslint';
 import { minimatch } from 'minimatch';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'url';
-import { TEST_FILE_PATTERNS } from '../index';
+import { TEST_FILE_PATTERNS } from './index';
 
 type ConfigEntry = {
   files: string[];

@@ -4,13 +4,13 @@ import {
   mergeRuleSummaries,
   RulesCollectionResult,
   RuleSummary,
-} from './src/utils';
+} from './utils';
 import { bold, cyan, green, red, yellow } from 'ansis';
 import { ESLint } from 'eslint';
-import { getFile } from './src/file-creation';
+import { getFile } from './file-creation';
 import { existsSync } from 'node:fs';
 import { readFile, rename, writeFile } from 'node:fs/promises';
-import { getEslintConfigPath } from './src/nx';
+import { getEslintConfigPath } from './nx';
 import { ProjectConfiguration } from 'nx/src/config/workspace-json-project-json';
 import { dirname } from 'path';
 
@@ -33,8 +33,8 @@ export const lintAllProjects = async (
       try {
         const result = await updateEsLintMigrationPlan({
           lintFilePatterns:
-            project.targets.lint?.options?.lintFilePatterns ?? project.root,
-          name: project.name,
+            project.targets?.lint?.options?.lintFilePatterns ?? project.root,
+          name: project.name as string,
           eslintConfig: getEslintConfigPath(project),
         });
 
