@@ -152,8 +152,9 @@ function aggregateEslintData(lintResults: RawLintResult[]): ReducedRule[] {
 
   // Helper to initialize or get a rule's details from the map
   const getRuleDetails = (ruleId: string): ReducedRule => {
-    if (!aggregatedRuleData.has(ruleId)) {
-      aggregatedRuleData.set(ruleId, {
+    let details = aggregatedRuleData.get(ruleId);
+    if (!details) {
+      details = {
         identifier: ruleId,
         timeMs: 0,
         everFixableCli: false,
@@ -161,9 +162,10 @@ function aggregateEslintData(lintResults: RawLintResult[]): ReducedRule[] {
         severities: [],
         occurredInTestFiles: false,
         occurredInNonTestFiles: false,
-      });
+      };
+      aggregatedRuleData.set(ruleId, details);
     }
-    return aggregatedRuleData.get(ruleId)!;
+    return details;
   };
 
   for (const fileResult of lintResults) {
@@ -241,7 +243,11 @@ export function processEslintData(lintResults: RawLintResult[]): ReducedRule[] {
         occurredInNonTestFiles: !fileIsTest,
       });
     }
-    const fileEntry = fileData.get(filePath)!;
+    const fileEntry = fileData.get(filePath);
+    if (!fileEntry) {
+      // This should not happen based on the logic above, but it satisfies TypeScript
+      continue;
+    }
 
     const ruleStatsMap = fileResult.stats?.times?.passes?.[0]?.rules;
     if (ruleStatsMap) {
