@@ -1,0 +1,9 @@
+{
+  "name": "eslint-stats",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/eslint-stats/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project eslint-stats --web",
+  "targets": {}
+}

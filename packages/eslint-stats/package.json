@@ -1,0 +1,25 @@
+{
+  "name": "@push-based/eslint-stats",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "eslint-stats": "./eslint-stats.cjs"
+  },
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "require": "./index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "zod": "^3.25.56",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/yargs": "^17.0.33"
+  }
+}
