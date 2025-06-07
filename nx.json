@@ -27,5 +27,13 @@
         "targetName": "lint"
       }
     }
-  ]
+  ],
+  "targetDefaults": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "max-warnings": 0
+      }
+    }
+  }
 }
