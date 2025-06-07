@@ -4,18 +4,24 @@
  */
 import type { Argv, CommandModule } from 'yargs';
 import { analyseHandler } from './handler';
+import {
+  GroupByOption,
+  groupByOptions,
+  SortByOption,
+  sortByOptions,
+} from './interactive';
 
 export interface AnalyseArgs {
   interactive?: boolean;
   file: string;
-  groupBy: string;
-  sortBy: string;
+  groupBy: GroupByOption;
+  sortBy: SortByOption;
   show: string[];
   take?: (string | number)[];
   outPath?: string;
 }
 
-export const analyseCommand: CommandModule<{}, AnalyseArgs> = {
+export const analyseCommand: CommandModule<object, AnalyseArgs> = {
   command: 'analyse <file>',
   describe: 'Analyse ESLint stats JSON file',
   builder: (yargs: Argv): Argv<AnalyseArgs> => {
@@ -31,17 +37,15 @@ export const analyseCommand: CommandModule<{}, AnalyseArgs> = {
       )
       .option('groupBy', {
         alias: 'g',
-        type: 'string',
         description: 'Group by "rule", "file", or "file-rule"',
         default: 'rule',
-        choices: ['rule', 'file', 'file-rule'],
+        choices: groupByOptions,
       })
       .option('sortBy', {
         alias: 's',
-        type: 'string',
         description: 'Sort by "time" or "violations"',
         default: 'time',
-        choices: ['time', 'violations'],
+        choices: sortByOptions,
       })
       .option('show', {
         description:
@@ -65,7 +69,7 @@ export const analyseCommand: CommandModule<{}, AnalyseArgs> = {
         type: 'boolean',
         description: 'Interactive mode',
         default: process.stdout.isTTY,
-      });
+      }) as unknown as Argv<AnalyseArgs>;
   },
   handler: analyseHandler,
 };

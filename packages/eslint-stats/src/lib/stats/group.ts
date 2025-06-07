@@ -30,18 +30,19 @@ export function groupByRule(detailedStats: DetailedRuleStat[]): TimeEntry[] {
   for (const stat of detailedStats) {
     const { ruleId } = stat;
 
-    if (!ruleMap.has(ruleId)) {
-      ruleMap.set(ruleId, {
+    let entry = ruleMap.get(ruleId);
+    if (!entry) {
+      entry = {
         identifier: ruleId,
         timeMs: 0,
         warningCount: 0,
         errorCount: 0,
         fixable: false,
         manuallyFixable: false,
-      });
+      };
+      ruleMap.set(ruleId, entry);
     }
 
-    const entry = ruleMap.get(ruleId)!;
     updateGroupedStats(entry, stat);
   }
   return Array.from(ruleMap.values());
@@ -62,17 +63,18 @@ export function groupByFile(detailedStats: DetailedRuleStat[]): TimeEntry[] {
   for (const stat of detailedStats) {
     const { filePath, timeMs, manuallyFixable, severity, fixable } = stat;
 
-    if (!fileProblemMap.has(filePath)) {
-      fileProblemMap.set(filePath, {
+    let entry = fileProblemMap.get(filePath);
+    if (!entry) {
+      entry = {
         timeMs: 0,
         manuallyFixable: false,
         problems: [],
         warningCount: 0,
         errorCount: 0,
-      });
+      };
+      fileProblemMap.set(filePath, entry);
     }
 
-    const entry = fileProblemMap.get(filePath)!;
     entry.timeMs += timeMs;
     entry.manuallyFixable = entry.manuallyFixable || manuallyFixable;
 
@@ -116,8 +118,9 @@ export function groupByFileAndRule(
     const { filePath, ruleId, timeMs, fixable, manuallyFixable, severity } =
       stat;
 
-    if (!fileMap.has(filePath)) {
-      fileMap.set(filePath, {
+    let fileEntry = fileMap.get(filePath);
+    if (!fileEntry) {
+      fileEntry = {
         identifier: filePath,
         timeMs: 0,
         children: [],
@@ -126,10 +129,10 @@ export function groupByFileAndRule(
         fixable: false,
         manuallyFixable: false,
         rules: new Map<string, TimeEntry>(),
-      });
+      };
+      fileMap.set(filePath, fileEntry);
     }
 
-    const fileEntry = fileMap.get(filePath)!;
     // Aggregate file-level stats
     fileEntry.timeMs += timeMs;
     fileEntry.manuallyFixable = fileEntry.manuallyFixable || manuallyFixable;
@@ -140,18 +143,19 @@ export function groupByFileAndRule(
       fileEntry.errorCount = (fileEntry.errorCount || 0) + 1;
     }
 
-    if (!fileEntry.rules.has(ruleId)) {
-      fileEntry.rules.set(ruleId, {
+    let ruleEntry = fileEntry.rules.get(ruleId);
+    if (!ruleEntry) {
+      ruleEntry = {
         identifier: ruleId,
         timeMs: 0,
         warningCount: 0,
         errorCount: 0,
         fixable: false,
         manuallyFixable: false,
-      });
+      };
+      fileEntry.rules.set(ruleId, ruleEntry);
     }
 
-    const ruleEntry = fileEntry.rules.get(ruleId)!;
     // Aggregate rule-level stats
     ruleEntry.timeMs += timeMs;
     ruleEntry.fixable = ruleEntry.fixable || fixable;
@@ -174,7 +178,6 @@ export function groupByFileAndRule(
   }
 
   return Array.from(fileMap.values()).map((fileEntry) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { rules, ...rest } = fileEntry;
     return {
       ...rest,

@@ -23,11 +23,16 @@ import {
 } from '../../../reporting/table-headers';
 import * as fs from 'fs';
 import * as path from 'path';
-import { formatAggregatedTimesForDisplay } from '../../../reporting/format';
+import { formatAggregatedTimesForDisplay } from '../../../reporting';
 
 type DetailedRuleStats = DetailedRuleStat[];
 type SortOrder = 'asc' | 'desc';
 type Action = 'group' | 'sort' | 'order' | 'rows' | 'write';
+
+export const groupByOptions = ['rule', 'file', 'file-rule'] as const;
+export const sortByOptions = ['time', 'violations'] as const;
+export type GroupByOption = (typeof groupByOptions)[number];
+export type SortByOption = (typeof sortByOptions)[number];
 
 interface InteractiveState {
   groupByIndex: number;
@@ -39,8 +44,6 @@ interface InteractiveState {
   outputPath?: string;
 }
 
-const groupByOptions = ['rule', 'file', 'file-rule'] as const;
-const sortByOptions = ['time', 'violations'] as const;
 const maxGroupByLength = Math.max(...groupByOptions.map((s) => s.length));
 const maxSortByLength = Math.max(...sortByOptions.map((s) => s.length));
 
@@ -53,8 +56,8 @@ function initInteractiveState(argv: AnalyseArgs): InteractiveState {
       );
 
   return {
-    groupByIndex: groupByOptions.indexOf(argv.groupBy as any),
-    sortByIndex: sortByOptions.indexOf(argv.sortBy as any),
+    groupByIndex: groupByOptions.indexOf(argv.groupBy),
+    sortByIndex: sortByOptions.indexOf(argv.sortBy),
     sortOrder: 'desc',
     take: argv.take?.map((n) => Number(n)) ?? [10],
     lastAction: 'sort',

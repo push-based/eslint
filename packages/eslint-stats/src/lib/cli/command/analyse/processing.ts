@@ -1,7 +1,3 @@
-import {
-  formatAggregatedTimesForDisplay,
-  FormattedDisplayEntry,
-} from '../../../reporting/format';
 import { AnalyseArgs } from './analyse.command';
 import {
   DetailedRuleStat,
@@ -48,10 +44,8 @@ export function getRowsToRender(
     order: sortOrder,
   });
 
-  const topEntries = getFirst(
-    sortedData,
-    take?.map((n) => Number(n))
+  return getFirst(
+      sortedData,
+      take?.map((n) => Number(n))
   );
-
-  return topEntries;
 }

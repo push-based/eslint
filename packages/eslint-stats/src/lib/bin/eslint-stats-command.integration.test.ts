@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { executeProcess } from '../../execute-process';
+import { executeProcess, removeColorCodes } from '@push-based/testing-utils';
 import { join } from 'path';
-// eslint-disable-next-line import/no-relative-parent-imports
-import { removeColorCodes } from '../../../../../../testing/utils/src/lib/string';
 
 describe('eslint-stats-command', () => {
   const eslintStatsBinPath =
@@ -10,7 +8,7 @@ describe('eslint-stats-command', () => {
   const eslintStatsPath = join(process.cwd(), 'eslint-stats.json');
 
   it('should run demo.ts and log output', async () => {
-    let { stdout, stderr, code } = await executeProcess({
+    const { stdout, stderr, code } = await executeProcess({
       command: 'tsx',
       args: [eslintStatsBinPath, eslintStatsPath],
     });
@@ -18,8 +16,8 @@ describe('eslint-stats-command', () => {
     expect(stderr).toBe('');
     expect(code).toBe(0);
 
-    stdout = removeColorCodes(stdout);
-    expect(stdout).toMatchInlineSnapshot(`
+    const stdoutClean = removeColorCodes(stdout);
+    expect(stdoutClean).toMatchInlineSnapshot(`
       "Rule                                                    |                       Time |                Timeouts |    🚨 Errors | ⚠️ Warnings
       :-------------------------------------------------------|---------------------------:|------------------------:|-------------:|-----------:
       @typescript-eslint/no-unused-vars    |         64.18 ms |         40.7% | 23 |            
@@ -38,7 +36,7 @@ describe('eslint-stats-command', () => {
   });
 
   it('should run demo.ts with "rule" argument and log output', async () => {
-    let { stdout, stderr, code } = await executeProcess({
+    const { stdout, stderr, code } = await executeProcess({
       command: 'tsx',
       args: [eslintStatsBinPath, eslintStatsPath, 'rule'],
     });
@@ -46,8 +44,8 @@ describe('eslint-stats-command', () => {
     expect(stderr).toBe('');
     expect(code).toBe(0);
 
-    stdout = removeColorCodes(stdout);
-    expect(stdout).toMatchInlineSnapshot(`
+    const stdoutClean = removeColorCodes(stdout);
+    expect(stdoutClean).toMatchInlineSnapshot(`
       "Rule                                                    |                       Time |                Timeouts |    🚨 Errors | ⚠️ Warnings
       :-------------------------------------------------------|---------------------------:|------------------------:|-------------:|-----------:
       @typescript-eslint/no-unused-vars    |         64.18 ms |         40.7% | 23 |            
@@ -66,7 +64,7 @@ describe('eslint-stats-command', () => {
   });
 
   it('should run demo.ts with "file" argument and log output', async () => {
-    let { stdout, stderr, code } = await executeProcess({
+    const { stdout, stderr, code } = await executeProcess({
       command: 'tsx',
       args: [eslintStatsBinPath, eslintStatsPath, 'file'],
     });
@@ -74,8 +72,8 @@ describe('eslint-stats-command', () => {
     expect(stderr).toBe('');
     expect(code).toBe(0);
 
-    stdout = removeColorCodes(stdout);
-    expect(stdout).toMatchInlineSnapshot(`
+    const stdoutClean = removeColorCodes(stdout);
+    expect(stdoutClean).toMatchInlineSnapshot(`
       "Rule                                                    |                       Time |                Timeouts |    🚨 Errors | ⚠️ Warnings
       :-------------------------------------------------------|---------------------------:|------------------------:|-------------:|-----------:
       @typescript-eslint/no-unused-vars    |         64.18 ms |         40.7% | 23 |            
@@ -94,7 +92,7 @@ describe('eslint-stats-command', () => {
   });
 
   it('should run demo.ts with "file-rule" argument and log output', async () => {
-    let { stdout, stderr, code } = await executeProcess({
+    const { stdout, stderr, code } = await executeProcess({
       command: 'tsx',
       args: [eslintStatsBinPath, eslintStatsPath, 'file-rule'],
     });
@@ -102,8 +100,8 @@ describe('eslint-stats-command', () => {
     expect(stderr).toBe('');
     expect(code).toBe(0);
 
-    stdout = removeColorCodes(stdout);
-    expect(stdout).toMatchInlineSnapshot(`
+    const stdoutClean = removeColorCodes(stdout);
+    expect(stdoutClean).toMatchInlineSnapshot(`
       "Rule                                                    |                       Time |                Timeouts |    🚨 Errors | ⚠️ Warnings
       :-------------------------------------------------------|---------------------------:|------------------------:|-------------:|-----------:
       @typescript-eslint/no-unused-vars    |         64.18 ms |         40.7% | 23 |            
@@ -122,7 +120,7 @@ describe('eslint-stats-command', () => {
   });
 
   it('should run demo.ts with "rule" and "violations" arguments and log output', async () => {
-    let { stdout, stderr, code } = await executeProcess({
+    const { stdout, stderr, code } = await executeProcess({
       command: 'tsx',
       args: [eslintStatsBinPath, eslintStatsPath, 'rule', 'violations'],
     });
@@ -130,8 +128,8 @@ describe('eslint-stats-command', () => {
     expect(stderr).toBe('');
     expect(code).toBe(0);
 
-    stdout = removeColorCodes(stdout);
-    expect(stdout).toMatchInlineSnapshot(`
+    const stdoutClean = removeColorCodes(stdout);
+    expect(stdoutClean).toMatchInlineSnapshot(`
       "Rule                                                    |                       Time |                Timeouts |    🚨 Errors | ⚠️ Warnings
       :-------------------------------------------------------|---------------------------:|------------------------:|-------------:|-----------:
       @typescript-eslint/no-unused-vars    |         64.18 ms |         40.7% | 23 |            
@@ -150,7 +148,7 @@ describe('eslint-stats-command', () => {
   });
 
   it('should run demo.ts with "file" and "violations" arguments and log output', async () => {
-    let { stdout, stderr, code } = await executeProcess({
+    const { stdout, stderr, code } = await executeProcess({
       command: 'tsx',
       args: [eslintStatsBinPath, eslintStatsPath, 'file', 'violations'],
     });
@@ -158,8 +156,8 @@ describe('eslint-stats-command', () => {
     expect(stderr).toBe('');
     expect(code).toBe(0);
 
-    stdout = removeColorCodes(stdout);
-    expect(stdout).toMatchInlineSnapshot(`
+    const stdoutClean = removeColorCodes(stdout);
+    expect(stdoutClean).toMatchInlineSnapshot(`
       "Rule                                                    |                       Time |                Timeouts |    🚨 Errors | ⚠️ Warnings
       :-------------------------------------------------------|---------------------------:|------------------------:|-------------:|-----------:
       @typescript-eslint/no-unused-vars    |         64.18 ms |         40.7% | 23 |            
@@ -178,7 +176,7 @@ describe('eslint-stats-command', () => {
   });
 
   it('should run demo.ts with "file-rule" and "violations" arguments and log output', async () => {
-    let { stdout, stderr, code } = await executeProcess({
+    const { stdout, stderr, code } = await executeProcess({
       command: 'tsx',
       args: [eslintStatsBinPath, eslintStatsPath, 'file-rule', 'violations'],
     });
@@ -186,8 +184,8 @@ describe('eslint-stats-command', () => {
     expect(stderr).toBe('');
     expect(code).toBe(0);
 
-    stdout = removeColorCodes(stdout);
-    expect(stdout).toMatchInlineSnapshot(`
+    const stdoutClean = removeColorCodes(stdout);
+    expect(stdoutClean).toMatchInlineSnapshot(`
       "Rule                                                    |                       Time |                Timeouts |    🚨 Errors | ⚠️ Warnings
       :-------------------------------------------------------|---------------------------:|------------------------:|-------------:|-----------:
       @typescript-eslint/no-unused-vars    |         64.18 ms |         40.7% | 23 |            

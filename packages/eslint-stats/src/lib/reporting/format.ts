@@ -27,7 +27,7 @@ function findCommonBasePath(paths: string[]): string {
   ) {
     i++;
   }
-  let common = firstPath.substring(0, i);
+  const common = firstPath.substring(0, i);
   const lastSlash = common.lastIndexOf('/');
   if (lastSlash > -1) {
     // Includes the slash
