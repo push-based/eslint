@@ -74,8 +74,6 @@ const ALIGN: ((str: string, len: number, ch?: string) => string)[] = [
   alignRight,
 ]; // Added alignRight for '%'
 
-export type ShowOption = 'time' | 'relative' | 'violations';
-
 /**
  * display the data
  * @param {FormattedDisplayEntry[]} data Array of pre-formatted display entries.
@@ -137,7 +135,6 @@ export function renderTable(
   data: FormattedDisplayEntry[],
   options: {
     headers?: string[];
-    show: ShowOption[];
   }
 ): string {
   const { headers = defaultHeaders } = options;

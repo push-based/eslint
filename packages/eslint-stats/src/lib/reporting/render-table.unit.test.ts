@@ -24,9 +24,11 @@ describe('render-table', () => {
         relativePercent: '100.0%',
         warningCount: '0',
         errorCount: '0',
+        fixable: true,
+        manuallyFixable: false,
       },
     ];
-    renderTable(testData);
+    renderTable(testData, { headers: ['Rule', 'Time (ms)', '%'] });
     const output = consoleSpy.mock.calls[0][0] as string;
     const expectedOutput = [
       'Rule   | Time (ms) | %     ',
@@ -45,6 +47,8 @@ describe('render-table', () => {
         relativePercent: '50.0%',
         warningCount: '0',
         errorCount: '0',
+        fixable: true,
+        manuallyFixable: false,
       },
       {
         identifier: 'rule-B',
@@ -53,9 +57,11 @@ describe('render-table', () => {
         relativePercent: '50.0%',
         warningCount: '0',
         errorCount: '0',
+        fixable: true,
+        manuallyFixable: false,
       },
     ];
-    renderTable(testData);
+    renderTable(testData, { headers: ['Rule', 'Time (ms)', '%'] });
     const output = consoleSpy.mock.calls[0][0] as string;
     const expectedOutput = [
       'Rule   | Time (ms) | %    ',
@@ -75,6 +81,8 @@ describe('render-table', () => {
         relativePercent: '100.0%',
         warningCount: '0',
         errorCount: '0',
+        fixable: true,
+        manuallyFixable: false,
         children: [
           {
             identifier: 'rule-A',
@@ -83,6 +91,8 @@ describe('render-table', () => {
             relativePercent: '50.0%',
             warningCount: '0',
             errorCount: '0',
+            fixable: true,
+            manuallyFixable: false,
           },
           {
             identifier: 'rule-B',
@@ -91,11 +101,13 @@ describe('render-table', () => {
             relativePercent: '50.0%',
             warningCount: '0',
             errorCount: '0',
+            fixable: true,
+            manuallyFixable: false,
           },
         ],
       },
     ];
-    renderTable(testData);
+    renderTable(testData, { headers: ['Rule', 'Time (ms)', '%'] });
     const output = consoleSpy.mock.calls[0][0] as string;
     const expectedOutput = [
       'Rule     | Time (ms) | %     ',
@@ -115,9 +127,11 @@ describe('render-table', () => {
         relativePercent: '18.8%',
         warningCount: '0',
         errorCount: '0',
+        fixable: true,
+        manuallyFixable: false,
       },
     ];
-    renderTable(testData);
+    renderTable(testData, { headers: ['Rule', 'Time (ms)', '%'] });
     const output = consoleSpy.mock.calls[0][0] as string;
     const expectedOutput = [
       'Rule                  | Time (ms) | %    ',
@@ -143,10 +157,12 @@ describe('render-table', () => {
         relativePercent: '100.0%',
         warningCount: '0',
         errorCount: '0',
+        fixable: true,
+        manuallyFixable: false,
         children: [],
       },
     ];
-    renderTable(testData);
+    renderTable(testData, { headers: ['Rule', 'Time (ms)', '%'] });
     const output = consoleSpy.mock.calls[0][0] as string;
     const expectedOutput = [
       'Rule   | Time (ms) | %     ',

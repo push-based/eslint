@@ -8,9 +8,9 @@ describe('calculateMsAndRelativePercent', () => {
   });
 
   it('should calculate percentages for flat list entries', () => {
-    const aggregatedTimes: TimeEntry[] = [
-      { identifier: 'ruleA', timeMs: 75 },
-      { identifier: 'ruleB', timeMs: 25 },
+    const aggregatedTimes = [
+      { identifier: 'ruleA', timeMs: 75 } as TimeEntry,
+      { identifier: 'ruleB', timeMs: 25 } as TimeEntry,
     ];
     // totalTime = 75 + 25 = 100
     expect(calculateMsAndRelativePercent(aggregatedTimes)).toStrictEqual([
