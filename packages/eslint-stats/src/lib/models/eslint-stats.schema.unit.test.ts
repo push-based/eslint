@@ -424,13 +424,42 @@ describe('ESLint Stats Schema Data Transformation', () => {
   it('should transform statsData to aggregated ReducedRule format using ParsedEslintStatsSchema', () => {
     expect(ParsedEslintStatsSchema.parse(statsData)).toStrictEqual([
       {
-        identifier: 'no-unused-vars',
-        timeMs: 0.719207 + 0.023001 + 0.586167 + 0.063875, // Sum from all files
-        everFixableCli: false,
-        everManuallyFixable: true, // Has suggestions in messages
-        severities: ['error'], // Severity 2 in messages
-        occurredInTestFiles: false,
-        occurredInNonTestFiles: true,
+        filePath:
+          '<CWD>/packages/eslint-stats/mocks/fixtures/minimal-setup/file-with-violations-2.js',
+        parseMs: 0.559958,
+        fixMs: 0,
+        totalMs: 1.081334,
+        errorCount: 2,
+        fatalErrorCount: 0,
+        warningCount: 1,
+        fixableErrorCount: 1,
+        fixableWarningCount: 0,
+        rules: [
+          {
+            ruleId: 'no-unused-vars',
+            timeMs: 0.063875,
+            fixable: false,
+            severity: 'error',
+          },
+          {
+            ruleId: 'no-console',
+            timeMs: 0.043000000000000003,
+            fixable: false,
+            severity: 'warning',
+          },
+          {
+            ruleId: 'semi',
+            timeMs: 0.013707,
+            fixable: false,
+            severity: 'error',
+          },
+          {
+            ruleId: 'quotes',
+            timeMs: 0.104542,
+            fixable: false,
+            severity: 'error',
+          },
+        ],
       },
       {
         identifier: 'no-console',
