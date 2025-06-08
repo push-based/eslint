@@ -4,13 +4,13 @@ import {
   mergeRuleSummaries,
   RulesCollectionResult,
   RuleSummary,
-} from './src/utils';
+} from './lib/utils';
 import { bold, cyan, green, red, yellow } from 'ansis';
 import { ESLint } from 'eslint';
-import { getFile } from './src/file-creation';
+import { getFile } from './lib/file-creation';
 import { existsSync } from 'node:fs';
 import { readFile, rename, writeFile } from 'node:fs/promises';
-import { getEslintConfigPath } from './src/nx';
+import { getEslintConfigPath } from './lib/nx';
 import { ProjectConfiguration } from 'nx/src/config/workspace-json-project-json';
 import { dirname } from 'path';
 

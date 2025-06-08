@@ -1,3 +1,15 @@
 {
-  "name": "@push-based/eslint-next"
+  "name": "@push-based/eslint-next",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "dependencies": {
+    "eslint": "^9.8.0",
+    "nx": "^21.1.2",
+    "@nx/devkit": "21.1.2",
+    "prettier": "^2.6.2",
+    "minimatch": "9.0.3"
+  }
 }
