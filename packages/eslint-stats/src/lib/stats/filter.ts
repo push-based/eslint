@@ -1,38 +1,44 @@
-import type { ProcessedTimeEntry } from '../models/eslint-stats.schema';
+import { ProcessedFileResult } from '../parse/processed-eslint-result.types';
+import { ProcessedRuleResult } from '../parse/processed-eslint-result.types';
+import { isFile } from './sort';
 
-export function getFirst(
-  entries: ProcessedTimeEntry[],
+export function getFirst<T extends ProcessedFileResult | ProcessedRuleResult>(
+  entries: T | T[],
   count: number[] = [10]
-): ProcessedTimeEntry[] {
+): T | T[] {
   const [currentCount, ...restCount] = count;
 
+  if (!Array.isArray(entries)) {
+    // Single ProcessedFileResult - apply filtering to its rules if present
+    if ('rules' in entries && entries.rules) {
+      const processedRules = getFirst(
+        entries.rules,
+        restCount.length > 0 ? restCount : [currentCount]
+      ) as ProcessedRuleResult[];
+
+      return {
+        ...entries,
+        rules: processedRules,
+      } as T;
+    }
+    return entries;
+  }
+
   const limit = currentCount ?? entries.length;
-  const wasSliced = entries.length > limit;
   const slicedEntries = entries.slice(0, limit);
 
-  const processedEntries = slicedEntries.map((entry) =>
-    entry.children
-      ? {
-          ...entry,
-          children: getFirst(
-            entry.children,
-            restCount.length > 0 ? restCount : [currentCount]
-          ),
-        }
-      : entry
-  );
-
-  if (wasSliced) {
-    processedEntries.push({
-      identifier: '...',
-      timeMs: 0,
-      relativePercent: 0,
-      warningCount: 0,
-      errorCount: 0,
-      fixable: false,
-      manuallyFixable: false,
-    });
-  }
+  const processedEntries = slicedEntries.map((entry: T) => {
+    if (isFile(entry) && 'rules' in entry && entry.rules) {
+      return {
+        ...entry,
+        rules: getFirst(
+          entry.rules,
+          restCount.length > 0 ? restCount : [currentCount]
+        ) as ProcessedRuleResult[],
+      } as T;
+    }
+    return entry;
+  });
 
   return processedEntries;
 }

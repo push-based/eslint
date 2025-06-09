@@ -1,23 +1,13 @@
 import type { ESLint } from 'eslint';
-import { EslintResultVisitor } from './eslint-result-visitor';
+import { EslintResultVisitor, RuleVisitData } from './eslint-result-visitor';
+import { StopOnFalseWalkOptions } from './walk.types';
 
 type ESLintResult = ESLint.LintResult;
 
-export interface WalkOptions {
-  // Stop walking if visitor returns false
-  // Good for:
-  // - Early termination: Stop when you find what you're looking for
-  // - Conditional processing: Stop on error conditions
-  stopOnFalse?: boolean;
-}
-
-/**
- * Walks through parsed ESLint data and calls visitor methods
- */
 export function walkEslintResult(
   parsedResults: ESLintResult[],
   visitor: EslintResultVisitor,
-  options: WalkOptions = {}
+  options: StopOnFalseWalkOptions = {}
 ): void {
   const { stopOnFalse = false } = options;
 

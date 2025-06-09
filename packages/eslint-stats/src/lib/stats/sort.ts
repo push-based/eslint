@@ -1,4 +1,7 @@
-import type { ProcessedTimeEntry } from '../models/eslint-stats.schema';
+import {
+  ProcessedFileResult,
+  ProcessedRuleResult,
+} from '../parse/processed-eslint-result.types';
 
 export type SortKey =
   | 'time'
@@ -15,10 +18,43 @@ export type SortOptions = {
   order?: 'asc' | 'desc';
 };
 
-export function sortRules(
-  entries: ProcessedTimeEntry[],
-  options: SortOptions = {}
-): ProcessedTimeEntry[] {
+export const isFile = (
+  entry: ProcessedFileResult | ProcessedRuleResult
+): entry is ProcessedFileResult => {
+  return 'filePath' in entry;
+};
+
+const getIdentifier = (
+  entry: ProcessedFileResult | ProcessedRuleResult
+): string => {
+  return isFile(entry) ? entry.filePath : entry.ruleId;
+};
+
+const getTimeMs = (
+  entry: ProcessedFileResult | ProcessedRuleResult
+): number => {
+  return isFile(entry) ? entry.totalMs : entry.totalMs;
+};
+
+const getTotalErrors = (entry: ProcessedFileResult | ProcessedRuleResult) => {
+  if (isFile(entry)) {
+    return entry.totalErrors;
+  } else {
+    return entry.errors;
+  }
+};
+
+const getTotalWarnings = (entry: ProcessedFileResult | ProcessedRuleResult) => {
+  if (isFile(entry)) {
+    return entry.totalWarnings;
+  } else {
+    return entry.warnings;
+  }
+};
+
+export function sortEsLintStats<
+  T extends ProcessedFileResult | ProcessedRuleResult
+>(entries: T[], options: SortOptions = {}): T[] {
   const { order = 'desc' } = options;
 
   const getSortKeys = (): SortKey[] => {
@@ -33,22 +69,19 @@ export function sortRules(
 
   const sortKeys = getSortKeys();
 
-  // Sort the current level of entries
-  entries.sort((a, b) => {
+  // Sort the entries
+  const sortedEntries = [...entries].sort((a, b) => {
     for (const key of sortKeys) {
       let diff = 0;
       switch (key) {
         case 'time':
-          diff = (b.timeMs || 0) - (a.timeMs || 0);
+          diff = getTimeMs(b) - getTimeMs(a);
           break;
         case 'errors':
-          diff = (b.errorCount || 0) - (a.errorCount || 0);
+          diff = getTotalErrors(b) - getTotalErrors(a);
           break;
         case 'warnings':
-          diff = (b.warningCount || 0) - (a.warningCount || 0);
-          break;
-        case 'manuallyFixable':
-          diff = (b.manuallyFixable ? 1 : 0) - (a.manuallyFixable ? 1 : 0);
+          diff = getTotalWarnings(b) - getTotalWarnings(a);
           break;
       }
       if (diff !== 0) {
@@ -56,16 +89,18 @@ export function sortRules(
       }
     }
 
-    // Secondary sort by identifier (e.g., rule name or file path)
-    return a.identifier.localeCompare(b.identifier);
+    // Secondary sort by identifier (file path or rule ID)
+    return getIdentifier(a).localeCompare(getIdentifier(b));
   });
 
-  // Recursively sort children
-  for (const entry of entries) {
-    if (entry.children && entry.children.length > 0) {
-      entry.children = sortRules(entry.children, options);
+  // For files, also sort their rules
+  return sortedEntries.map((entry) => {
+    if (isFile(entry) && 'rules' in entry && entry.rules) {
+      return {
+        ...entry,
+        rules: sortEsLintStats(entry.rules, options),
+      };
     }
-  }
-
-  return entries;
+    return entry;
+  });
 }

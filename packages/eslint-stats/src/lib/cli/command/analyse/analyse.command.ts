@@ -9,7 +9,7 @@ import {
   groupByOptions,
   SortByOption,
   sortByOptions,
-} from './interactive';
+} from './scene-state';
 
 export interface AnalyseArgs {
   interactive?: boolean;

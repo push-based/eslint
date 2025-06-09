@@ -1,11 +1,8 @@
 import { readFileSync } from 'fs';
-import {
-  DetailedRuleStatsSchema,
-  DetailedRuleStat,
-} from '../models/eslint-stats.schema';
+import { processEslintResults } from '../parse/eslint-result.visitor';
+import { ProcessedEslintRulesStats } from '../parse/processed-eslint-result.types';
 
-export function loadStats(file: string): DetailedRuleStat[] {
-  let detailedStats: DetailedRuleStat[] = [];
+export function loadStats(file: string): ProcessedEslintRulesStats {
   try {
     const jsonContent = readFileSync(file, 'utf-8');
     const lintResults = JSON.parse(jsonContent);
@@ -22,7 +19,7 @@ export function loadStats(file: string): DetailedRuleStat[] {
       );
     }
 
-    detailedStats = DetailedRuleStatsSchema.parse(lintResults);
+    return processEslintResults(lintResults);
   } catch (error) {
     if (error instanceof Error) {
       throw new Error(`Error parsing file "${file}": ${error.message}`);
@@ -30,6 +27,4 @@ export function loadStats(file: string): DetailedRuleStat[] {
       throw new Error(`An unknown error occurred while processing "${file}".`);
     }
   }
-
-  return detailedStats;
 }

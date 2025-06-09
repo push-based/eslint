@@ -1,8 +1,9 @@
 import ansis from 'ansis';
-import { renderTable, ShowOption } from '../../../reporting/render-table';
+import {
+  flattenFormattedEntriesToRows,
+  renderTable,
+} from '../../../reporting/render-table';
 import { reprintSection } from './utils';
-import { AnalyseArgs } from './analyse.command';
-import { DetailedRuleStat } from '../../../models/eslint-stats.schema';
 import {
   ARROW_DOWN,
   ARROW_LEFT,
@@ -15,8 +16,7 @@ import {
   TAB,
   ENTER,
 } from './constants';
-import { getRowsToRender } from './processing';
-import { terminalFormat } from '../../../reporting/terminal-format';
+import { sortEsLintStats } from '../../../stats/sort';
 import {
   getFirstColumnHeader,
   getTableHeaders,
@@ -24,47 +24,26 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { formatAggregatedTimesForDisplay } from '../../../reporting';
-
-type DetailedRuleStats = DetailedRuleStat[];
-type SortOrder = 'asc' | 'desc';
-type Action = 'group' | 'sort' | 'order' | 'rows' | 'write';
-
-export const groupByOptions = ['rule', 'file', 'file-rule'] as const;
-export const sortByOptions = ['time', 'violations'] as const;
-export type GroupByOption = (typeof groupByOptions)[number];
-export type SortByOption = (typeof sortByOptions)[number];
-
-interface InteractiveState {
-  groupByIndex: number;
-  sortByIndex: number;
-  sortOrder: SortOrder;
-  take: number[];
-  lastAction: Action | null;
-  notification?: string;
-  outputPath?: string;
-}
-
-const maxGroupByLength = Math.max(...groupByOptions.map((s) => s.length));
-const maxSortByLength = Math.max(...sortByOptions.map((s) => s.length));
-
-function initInteractiveState(argv: AnalyseArgs): InteractiveState {
-  const outputPath = argv.outPath
-    ? path.resolve(argv.outPath)
-    : path.resolve(
-        path.dirname(argv.file),
-        path.basename(argv.file, path.extname(argv.file)) + '.md'
-      );
-
-  return {
-    groupByIndex: groupByOptions.indexOf(argv.groupBy),
-    sortByIndex: sortByOptions.indexOf(argv.sortBy),
-    sortOrder: 'desc',
-    take: argv.take?.map((n) => Number(n)) ?? [10],
-    lastAction: 'sort',
-    notification: undefined,
-    outputPath,
-  };
-}
+import {
+  ProcessedEslintRulesStats,
+  ProcessedRuleResult,
+  ProcessedFileResult,
+} from '../../../parse/processed-eslint-result.types';
+import { ProcessedEslintResultTotals } from '../../../parse/totals';
+import {
+  ProcessedFileResultWithRelative,
+  ProcessedRuleResultWithRelative,
+} from '../../../stats/calc-times';
+import {
+  InteractiveState,
+  sortByOptions,
+  groupByOptions,
+  maxGroupByLength,
+  maxSortByLength,
+} from './scene-state';
+import { getFirst } from '../../../stats/filter';
+import { groupByFile, groupByRule } from '../../../stats/grouping';
+import { addStats } from '../../../stats/calc-times';
 
 function handleKeyPress(
   key: string,
@@ -131,7 +110,7 @@ function handleKeyPress(
   }
 }
 
-function createInteractivLegend(state: InteractiveState): string {
+function createInteractivOptions(state: InteractiveState): string {
   const {
     groupByIndex,
     sortByIndex,
@@ -187,57 +166,71 @@ function createInteractivLegend(state: InteractiveState): string {
   return header;
 }
 
-function renderInteractiveView(
+export function renderInteractiveView(
   state: InteractiveState,
-  detailedStats: DetailedRuleStats,
-  show: ShowOption[]
+  detailedStats: ProcessedEslintRulesStats
 ): string {
-  const { groupByIndex, sortByIndex, sortOrder, take, lastAction } = state;
-  const groupBy = groupByOptions[groupByIndex];
+  const { sortByIndex, sortOrder, take } = state;
   const sortBy = sortByOptions[sortByIndex];
+  const groupBy = groupByOptions[state.groupByIndex];
 
-  const processedData = getRowsToRender(detailedStats, {
-    groupBy,
-    sortBy,
-    sortOrder,
-    take,
-    show,
-  });
-  const formattedData = formatAggregatedTimesForDisplay(processedData);
+  // Always use stats from original detailedStats
+  const { processedResults: originalResults, ...stats } = detailedStats;
 
-  const firstColumnHeader = getFirstColumnHeader(groupBy);
-  const headers = getTableHeaders(firstColumnHeader);
-  const sortArrow = sortOrder === 'desc' ? '↓' : '↑';
-  if (sortBy === 'time') {
-    headers[1] = `${headers[1]} ${sortArrow}`;
-    headers[2] = `${headers[2]} ${sortArrow}`;
-  } else if (sortBy === 'violations') {
-    headers[3] = `${headers[3]} ${sortArrow}`;
-    headers[4] = `${headers[4]} ${sortArrow}`;
+  let processedResults: ProcessedFileResult[] | ProcessedRuleResult[];
+  let dataForSorting: (ProcessedFileResult | ProcessedRuleResult)[];
+
+  if (groupBy === 'rule') {
+    const groupedData = groupByRule(detailedStats);
+    processedResults = groupedData.processedResults;
+    const enrichedData = addStats(
+      processedResults as ProcessedRuleResult[],
+      stats
+    );
+    dataForSorting = enrichedData;
+  } else if (groupBy === 'file') {
+    const groupedData = groupByFile(detailedStats);
+    processedResults = groupedData.processedResults;
+    const enrichedData = addStats(
+      processedResults as ProcessedFileResult[],
+      stats
+    );
+    dataForSorting = enrichedData;
+  } else {
+    processedResults = originalResults;
+    const enrichedData = addStats(processedResults, stats);
+    dataForSorting = enrichedData;
   }
 
-  if (lastAction === 'group') {
-    headers[0] = ansis.bold(headers[0]);
-  } else if (lastAction === 'sort' || lastAction === 'order') {
-    if (sortBy === 'time') {
-      headers[1] = ansis.bold(headers[1]);
-      headers[2] = ansis.bold(headers[2]);
-    } else if (sortBy === 'violations') {
-      headers[3] = ansis.bold(headers[3]);
-      headers[4] = ansis.bold(headers[4]);
+  const sortedData = sortEsLintStats(
+    dataForSorting as ProcessedRuleResultWithRelative[],
+    {
+      key: sortBy as 'time' | 'violations',
+      order: sortOrder,
     }
-  }
+  );
 
-  const tableStr = renderTable(terminalFormat(formattedData), {
-    headers: headers,
-    show,
+  const firstItems = getFirst(sortedData, take);
+
+  const formattedData = formatAggregatedTimesForDisplay(
+    Array.isArray(firstItems) ? firstItems : [firstItems],
+    stats
+  );
+  // Data is assumed to be pre-sorted and pre-sliced if necessary by the caller.
+  // The flattenFormattedEntriesToRows function will handle hierarchy.
+  const displayRows: string[][] = flattenFormattedEntriesToRows(formattedData);
+
+  const tableStr = renderTable(displayRows, {
+    headers: getHeaders(state),
+    stats,
   });
 
-  const header = createInteractivLegend(state);
-
-  const linesToPrint = [header, '', tableStr];
+  const interactiveOptions = state.interactive
+    ? [createInteractivOptions(state)]
+    : [''];
+  const linesToPrint = [...interactiveOptions, '', tableStr];
   reprintSection(linesToPrint);
-  return tableStr;
+  return linesToPrint.join('\n');
 }
 
 function handleWriteAction(
@@ -268,7 +261,7 @@ function handleWriteAction(
   fs.appendFileSync(outputPath, contentToAppend);
   return {
     ...state,
-    lastAction: null,
+    lastAction: undefined,
     notification: `Appended to ${outputName}`,
   };
 }
@@ -287,27 +280,20 @@ function setupStdin(onData: (key: string) => void, onExit: () => void) {
 }
 
 export function startInteractiveSession(
-  detailedStats: DetailedRuleStats,
-  argv: AnalyseArgs
+  detailedStats: ProcessedEslintRulesStats,
+  state: InteractiveState,
+  filePath: string
 ): void {
-  let state = initInteractiveState(argv);
-
-  const { show, file } = argv;
-
   let tableStr: string;
 
   const renderScreen = () =>
-    (tableStr = renderInteractiveView(
-      state,
-      detailedStats,
-      show as ShowOption[]
-    ));
+    (tableStr = renderInteractiveView(state, detailedStats));
 
   setupStdin(
     (key: string) => {
       state = handleKeyPress(key, state);
       if (state.lastAction === 'write' && state.outputPath) {
-        state = handleWriteAction(state, tableStr, state.outputPath, file);
+        state = handleWriteAction(state, tableStr, state.outputPath, filePath);
       }
       renderScreen();
     },
@@ -316,4 +302,34 @@ export function startInteractiveSession(
 
   console.clear();
   renderScreen();
+}
+
+export function getHeaders(state: InteractiveState): string[] {
+  const { groupByIndex, sortByIndex, sortOrder, lastAction } = state;
+  const groupBy = groupByOptions[groupByIndex];
+  const sortBy = sortByOptions[sortByIndex];
+
+  const firstColumnHeader = getFirstColumnHeader(groupBy);
+  const headers = getTableHeaders(firstColumnHeader);
+  const sortArrow = sortOrder === 'desc' ? '↓' : '↑';
+  if (sortBy === 'time') {
+    headers[1] = `${headers[1]} ${sortArrow}`;
+    headers[2] = `${headers[2]} ${sortArrow}`;
+  } else if (sortBy === 'violations') {
+    headers[3] = `${headers[3]} ${sortArrow}`;
+    headers[4] = `${headers[4]} ${sortArrow}`;
+  }
+
+  if (lastAction === 'group') {
+    headers[0] = ansis.bold(headers[0]);
+  } else if (lastAction === 'sort' || lastAction === 'order') {
+    if (sortBy === 'time') {
+      headers[1] = ansis.bold(headers[1]);
+      headers[2] = ansis.bold(headers[2]);
+    } else if (sortBy === 'violations') {
+      headers[3] = ansis.bold(headers[3]);
+      headers[4] = ansis.bold(headers[4]);
+    }
+  }
+  return headers;
 }

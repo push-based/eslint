@@ -1,8 +1,8 @@
 import { FormattedDisplayEntry } from './format';
-import { formatAggregatedTimesForDisplay } from './format';
+import { formatProcessedResultsForDisplay } from './format';
 describe('formatAggregatedTimesForDisplay', () => {
   it('should return empty array for empty input', () => {
-    expect(formatAggregatedTimesForDisplay([])).toEqual([]);
+    expect(formatProcessedResultsForDisplay([])).toEqual([]);
   });
 
   it('should sort entries by timeMs descending and format (flat list)', () => {
@@ -37,7 +37,7 @@ describe('formatAggregatedTimesForDisplay', () => {
         relativePercent: 'N/A',
       },
     ];
-    expect(formatAggregatedTimesForDisplay(unsortedEntries)).toStrictEqual(
+    expect(formatProcessedResultsForDisplay(unsortedEntries)).toStrictEqual(
       expectedFormattedOutput
     );
   });
@@ -53,7 +53,7 @@ describe('formatAggregatedTimesForDisplay', () => {
     const expectedOutput: FormattedDisplayEntry[] = [
       { identifier: 'ruleA', timeMs: '50.123', relativePercent: '50.1%' },
     ];
-    expect(formatAggregatedTimesForDisplay(entry)).toEqual(expectedOutput);
+    expect(formatProcessedResultsForDisplay(entry)).toEqual(expectedOutput);
   });
 
   it('should format and sort hierarchical entries correctly, preserving structure', () => {
@@ -125,7 +125,7 @@ describe('formatAggregatedTimesForDisplay', () => {
       { identifier: 'file/C.ts', timeMs: '20.000', relativePercent: '10.0%' },
     ];
 
-    expect(formatAggregatedTimesForDisplay(hierarchicalEntries)).toStrictEqual(
+    expect(formatProcessedResultsForDisplay(hierarchicalEntries)).toStrictEqual(
       expectedFormattedOutput
     );
   });
@@ -153,7 +153,7 @@ describe('formatAggregatedTimesForDisplay', () => {
       },
       { identifier: 'parent2', timeMs: '5.000', relativePercent: '50.0%' },
     ];
-    expect(formatAggregatedTimesForDisplay(entries)).toStrictEqual(expected);
+    expect(formatProcessedResultsForDisplay(entries)).toStrictEqual(expected);
   });
 
   it('should handle relativePercent -1 correctly in hierarchical structure', () => {
@@ -175,6 +175,6 @@ describe('formatAggregatedTimesForDisplay', () => {
         ],
       },
     ];
-    expect(formatAggregatedTimesForDisplay(entries)).toStrictEqual(expected);
+    expect(formatProcessedResultsForDisplay(entries)).toStrictEqual(expected);
   });
 });

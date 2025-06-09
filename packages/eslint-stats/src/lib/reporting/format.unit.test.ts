@@ -1,7 +1,7 @@
 import { it, expect, describe } from 'vitest';
 import {
   createIdentifierFormatter,
-  formatAggregatedTimesForDisplay,
+  formatProcessedResultsForDisplay,
   shortenPath,
 } from './format';
 import type { ProcessedTimeEntry } from '../models/eslint-stats.schema';
@@ -157,12 +157,12 @@ describe('createIdentifierFormatter', () => {
 
 describe('formatAggregatedTimesForDisplay', () => {
   it('should return empty array for empty input', () => {
-    expect(formatAggregatedTimesForDisplay([])).toEqual([]);
+    expect(formatProcessedResultsForDisplay([])).toEqual([]);
   });
 
   it('should format entries and not change order (flat list)', () => {
     expect(
-      formatAggregatedTimesForDisplay([
+      formatProcessedResultsForDisplay([
         {
           identifier: '@typescript-eslint/no-unused-vars',
           timeMs: 71.412,
@@ -221,7 +221,7 @@ describe('formatAggregatedTimesForDisplay', () => {
 
   it('should format timeMs and relativePercent strings correctly (flat list)', () => {
     expect(
-      formatAggregatedTimesForDisplay([
+      formatProcessedResultsForDisplay([
         {
           identifier: 'ruleA',
           timeMs: 50.1234,
@@ -246,7 +246,7 @@ describe('formatAggregatedTimesForDisplay', () => {
 
   it('should format hierarchical entries correctly and not change order, preserving structure', () => {
     expect(
-      formatAggregatedTimesForDisplay([
+      formatProcessedResultsForDisplay([
         {
           identifier: 'file/A.ts',
           timeMs: 100,
@@ -402,7 +402,7 @@ describe('formatAggregatedTimesForDisplay', () => {
 
   it('should handle empty children array and undefined children correctly in hierarchical structure', () => {
     expect(
-      formatAggregatedTimesForDisplay([
+      formatProcessedResultsForDisplay([
         {
           identifier: 'parent1.ts',
           timeMs: 10,
@@ -446,7 +446,7 @@ describe('formatAggregatedTimesForDisplay', () => {
 
   it('should add icons for fixable and manuallyFixable entries', () => {
     expect(
-      formatAggregatedTimesForDisplay([
+      formatProcessedResultsForDisplay([
         {
           identifier: 'rule-fixable',
           timeMs: 10,
@@ -530,7 +530,7 @@ describe('formatAggregatedTimesForDisplay', () => {
 
   it('should handle relativePercent -1 correctly in hierarchical structure', () => {
     expect(
-      formatAggregatedTimesForDisplay([
+      formatProcessedResultsForDisplay([
         {
           identifier: 'parent.ts',
           timeMs: 0,

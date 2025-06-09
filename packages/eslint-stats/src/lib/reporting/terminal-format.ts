@@ -1,5 +1,3 @@
-import { FormattedDisplayEntry } from './format';
-
 import ansis from 'ansis';
 
 export const colors = {
@@ -11,63 +9,41 @@ export const colors = {
   bold: ansis.bold,
 };
 
-function getTotals(entries: FormattedDisplayEntry[]): {
-  totalTime: number;
-  maxTime: number;
-  totalErrorCount: number;
-  totalWarningCount: number;
-} {
-  let totalTime = 0;
-  let maxTime = 0;
-  let totalErrorCount = 0;
-  let totalWarningCount = 0;
-
-  function recurse(currentEntries: FormattedDisplayEntry[]) {
-    for (const entry of currentEntries) {
-      totalTime += entry.rawTimeMs;
-      if (entry.rawTimeMs > maxTime) {
-        maxTime = entry.rawTimeMs;
-      }
-      if (entry.errorCount) {
-        totalErrorCount += parseInt(entry.errorCount, 10) || 0;
-      }
-      if (entry.warningCount) {
-        totalWarningCount += parseInt(entry.warningCount, 10) || 0;
-      }
-      if (entry.children) {
-        recurse(entry.children);
-      }
-    }
-  }
-  recurse(entries);
-  return { totalTime, maxTime, totalErrorCount, totalWarningCount };
-}
-
 /**
  * Applies terminal colors to formatted display entries for better readability.
- * @param {FormattedDisplayEntry[]} entries - The array of entries to format.
- * @returns {FormattedDisplayEntry[]} A new array of entries with color-formatted strings.
- */
+ * @param entries - The array of entries to format.
+ * @param stats - The processed ESLint rules statistics.
+ * @returns A new array of entries with color-formatted strings.
+
 export function terminalFormat(
-  entries: FormattedDisplayEntry[]
-): FormattedDisplayEntry[] {
-  const { maxTime, totalErrorCount, totalWarningCount } = getTotals(entries);
+  entries: (ProcessedFileResult | ProcessedRuleResult)[],
+  stats: ProcessedEslintRulesStats
+): (ProcessedFileResult | ProcessedRuleResult)[] {
+  const { totalTimeMs, totalErrors, totalWarnings } = stats;
 
   function formatRecursive(
-    currentEntries: FormattedDisplayEntry[]
-  ): FormattedDisplayEntry[] {
+    currentEntries: (ProcessedFileResult | ProcessedRuleResult)[]
+  ): (StringifiedProcessedFileResult | StringifiedProcessedRuleResult)[] {
     return currentEntries.map((entry) => {
-      const { errorCount, warningCount } = entry;
-      const hasErrors = errorCount !== '' && errorCount !== '0';
-      const hasWarnings = warningCount !== '' && warningCount !== '0';
+      const isFile = isFileResult(entry);
+
+      // Get the correct properties based on entry type
+      const errors = isFile ? entry.errors : entry.errors;
+      const warnings = isFile ? entry.warnings : entry.warnings;
+      const identifier = isFile ? entry.filePath : entry.ruleId;
+      const timeMs = isFile ? entry.totalMs : entry.totalMs;
+      const rawTimeMs = timeMs; // Use the same value since we don't have separate raw time
+
+      const hasErrors = errors !== 0;
+      const hasWarnings = warnings !== 0;
       const hasViolations = hasErrors || hasWarnings;
 
       // Dim the identifier if it has no violations, otherwise color it blue.
-      const identifier = hasViolations
-        ? colors.blue(entry.identifier)
-        : colors.dim.blue(entry.identifier);
+      const coloredIdentifier = hasViolations
+        ? colors.blue(identifier)
+        : colors.dim.blue(identifier);
 
-      const timeRatio = maxTime > 0 ? entry.rawTimeMs / maxTime : 0;
+      const timeRatio = totalTimeMs > 0 ? rawTimeMs / totalTimeMs : 0;
       let timeColor;
 
       if (timeRatio > 0.5) {
@@ -82,36 +58,65 @@ export function terminalFormat(
         timeColor = ansis.dim.hex('#666666'); // Dim, Dark Gray
       }
 
-      const errorNum = parseInt(entry.errorCount, 10) || 0;
-      const errorRatio = totalErrorCount > 0 ? errorNum / totalErrorCount : 0;
+      const errorRatio = totalErrors > 0 ? errors / totalErrors : 0;
       const errorColor = errorRatio < 0.1 ? colors.dim.red : colors.red;
 
-      const warningNum = parseInt(entry.warningCount, 10) || 0;
-      const warningRatio =
-        totalWarningCount > 0 ? warningNum / totalWarningCount : 0;
+      const warningRatio = totalWarnings > 0 ? warnings / totalWarnings : 0;
       const warningColor = warningRatio < 0.1 ? ansis.dim.yellow : ansis.yellow;
 
-      return {
-        ...entry,
-        identifier,
-        // Color-code time based on its value
-        timeMs: timeColor(entry.timeMs),
-        // Color-code relative percentage
-        relativePercent: timeColor(entry.relativePercent),
-        // Color-code error and warning counts
-        errorCount: (() => {
-          if (!hasErrors) return entry.errorCount;
-          const [num, ...rest] = entry.errorCount.split(/(?=\s)/);
-          return `${errorColor(num)}%%SEP%%${errorColor(rest.join(''))}`;
-        })(),
-        warningCount: (() => {
-          if (!hasWarnings) return entry.warningCount;
-          const [num, ...rest] = entry.warningCount.split(/(?=\s)/);
-          return `${warningColor(num)}%%SEP%%${warningColor(rest.join(''))}`;
-        })(),
-        children: entry.children ? formatRecursive(entry.children) : undefined,
-      };
-    });
-  }
+      // Format duration
+      const formattedTime =
+        timeMs < 1000
+          ? `${timeMs.toFixed(2)} ms`
+          : `${(timeMs / 1000).toFixed(2)} s`;
+
+      // Format error and warning counts with icons
+     const fixable = isFile
+        ? entry.fixableErrors > 0 || entry.fixableWarnings > 0
+        : entry.fixable;
+      const fixableIcon = fixable ? ' 🔧' : '';
+
+      const formattedErrors = hasErrors ? `${errors}` : '0';
+      const formattedWarnings = hasWarnings ? `${warnings}` : '0';
+
+      const coloredErrors = hasErrors
+        ? errorColor(formattedErrors)
+        : formattedErrors;
+
+      const coloredWarnings = hasWarnings
+        ? warningColor(formattedWarnings)
+        : formattedWarnings;
+
+      // Handle children/rules recursively
+      const children =
+        isFile && entry.rules && entry.rules.length > 0
+          ? formatRecursive(entry.rules)
+          : undefined;
+
+      if (isFile) {
+        return {
+          filePath: coloredIdentifier,
+          parseMs: '0 ms', // Default since not available
+          rulesMs: '0 ms', // Default since not available
+          fixMs: '0 ms', // Default since not available
+          totalMs: timeColor(formattedTime),
+          totalErrors: coloredErrors,
+          totalWarnings: coloredWarnings,
+          fixableErrors: '0', // Default since not tracked separately
+          fixableWarnings: '0', // Default since not tracked separately
+          rules: children,
+        };
+      } else {
+        return }
+          ruleId: coloredIdentifier,
+          timeMs: timeColor(formattedTime),
+          errors: coloredErrors,
+          warnings: coloredWarnngs,
+          fixable: fixable.toString(),
+        }
+      }
+    };
+
   return formatRecursive(entries);
 }
+*/
