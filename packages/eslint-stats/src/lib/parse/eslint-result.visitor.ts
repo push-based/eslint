@@ -1,4 +1,4 @@
-import type { ESLint } from 'eslint';
+import type { ESLint, Linter } from 'eslint';
 import {
   EslintResultVisitor,
   ProcessedEslintResult,
@@ -67,6 +67,10 @@ export function createProcessEslintResultVisitor(): EslintResultVisitor & {
       currentFile = fileResult;
       totalsTracker.trackFile(fileResult);
       results.push(fileResult);
+    },
+
+    visitMessage(message: Linter.LintMessage, fileResult: ProcessedFile): void {
+      return;
     },
 
     visitRule(ruleData: ProcessedRule, _: ProcessedFile): void {
