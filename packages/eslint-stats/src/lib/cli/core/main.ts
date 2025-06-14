@@ -1,6 +1,7 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { analyseCommand } from '../command/analyse/analyse.command';
+import measureCommand from '../command/measure';
 
 export async function main(): Promise<void> {
   const cli = yargs(hideBin(process.argv))
@@ -16,6 +17,9 @@ export async function main(): Promise<void> {
   cli.command({
     ...analyseCommand,
     command: ['$0 <file>', 'analyse <file>'],
+  });
+  cli.command({
+    ...measureCommand,
   });
 
   await cli.parse();

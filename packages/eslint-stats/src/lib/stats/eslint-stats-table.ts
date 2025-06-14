@@ -141,7 +141,7 @@ function makeTableView<T extends SortableEntry>(
 
   const rows = limited.map((e) => {
     const identifier = formatIdentifier(e, headerLabel);
-    let timeStr = formatTimeColored(e.time, maxTime);
+    const timeStr = formatTimeColored(e.time, maxTime);
     let timeCell = timeStr;
 
     if (extraTimeCell) {

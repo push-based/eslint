@@ -20,7 +20,7 @@ export interface ProcessedEslintResultTotals {
 }
 
 export function createProcessedTotalsTracker() {
-  let totals: ProcessedEslintResultTotals = {
+  const totals: ProcessedEslintResultTotals = {
     totalFiles: 0,
     totalRules: 0,
     totalTimeMs: 0,

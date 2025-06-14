@@ -51,6 +51,38 @@ npm install @push-based/eslint-stats
 
 This guide provides instructions for using the `@push-based/eslint-stats` CLI.
 
+### `measure` command
+
+**Usage:**
+
+```bash
+npx @push-based/eslint-stats measure <files...> [options...]
+```
+
+**Description:**
+Runs ESLint on a given set of files and measures timing stats. This command is a wrapper around the ESLint CLI, adding the ability to capture timing statistics.
+
+**Arguments:**
+
+| Argument | Type | Description |
+| --- | --- | --- |
+| **`<files...>`** | `string[]` | Paths to files or directories to lint. |
+
+**ESLint Options:**
+
+| Option | Alias | Type | Description |
+| --- | --- | --- | --- |
+| **`--config`** | `-c` | `string` | Path to the ESLint config file. |
+| **`--format`** | | `string` | ESLint output format. |
+| **`--output-file`** | `-o` | `string` | File to write the ESLint output to. |
+| **`--quiet`** | | `boolean` | Report errors only. |
+
+**Examples:**
+
+- `eslint-stats measure "src/**/*.ts"` - Lint all TypeScript files in the `src` directory.
+- `eslint-stats measure "src/**/*.ts" --config ./.eslintrc.ci.js --format json --output-file eslint-report.json` - Lint files with a specific config and output format.
+- `eslint-stats measure "src/**/*.ts" --stats-output-file stats.json` - Lint files and save performance statistics to `stats.json`.
+
 ### `analyse` command
 
 **Usage:**

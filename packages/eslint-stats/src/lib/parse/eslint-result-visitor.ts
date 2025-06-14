@@ -49,6 +49,6 @@ export type ProcessedEslintResult = {
   times: {
     total: number;
   };
-  violations: {};
+  violations: Record<string, number>;
   files: ProcessedFile[];
 };
