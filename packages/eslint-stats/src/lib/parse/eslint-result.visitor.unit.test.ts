@@ -4,7 +4,6 @@ import {
 } from './eslint-result.visitor';
 import type { ESLint } from 'eslint';
 import { describe, it, expect } from 'vitest';
-import { ProcessEslintResultVisitor } from '../stats';
 
 const messageNoUnusedVars = {
   ruleId: 'no-unused-vars',
@@ -61,105 +60,77 @@ const file1: ESLint.LintResult = {
 };
 
 describe('createProcessEslintResultVisitor', () => {
-  it('should visitFile and getResults', () => {
-    const visitor =
-      createProcessEslintResultVisitor() as ProcessEslintResultVisitor & {
-        visitFile: (file: ESLint.LintResult) => void;
-      };
-
-    expect(visitor.visitFile).toBeDefined();
-    expect(visitor.visitFile(file1)).toBeUndefined();
-
-    expect(visitor.getResults()).toStrictEqual(
-      expect.objectContaining({
-        totalFiles: 1,
-        totalRules: 0,
-        processedFileResults: [
-          expect.objectContaining({
-            filePath: 'file1.js',
-          }),
-        ],
-      })
-    );
-
-    expect(
-      visitor.visitRule({
-        ruleId: 'no-unused-vars',
-        messages: [messageNoUnusedVars],
-        timeMs: statsNoUnusedVars['no-unused-vars'].total,
-      })
-    ).toBeUndefined();
-
-    expect(visitor.getResults()).toStrictEqual(
-      expect.objectContaining({
-        totalFiles: 1,
-        totalRules: 1,
-        processedFileResults: [
-          expect.objectContaining({
-            filePath: 'file1.js',
-            rules: [
-              expect.objectContaining({
-                ruleId: 'no-unused-vars',
-              }),
-            ],
-          }),
-        ],
-      })
-    );
-
-    expect(visitor.visitMessage(messageNoUnusedVars)).toBeUndefined();
-
-    expect(visitor.getResults()).toStrictEqual({
-      totalFiles: 1,
-      totalRules: 1,
-      totalErrors: 1,
-      totalWarnings: 0,
-      totalFixableErrors: 0,
-      totalFixableWarnings: 0,
-      totalFileErrors: 0,
-      totalFileWarnings: 0,
-      totalTimeMs: 100,
-      processedFileResults: [
-        {
-          filePath: 'file1.js',
-          parseMs: 10,
-          rulesMs: 40,
-          fixMs: 40,
-          totalMs: 100,
-          totalErrors: 0,
-          totalWarnings: 0,
-          fixableErrors: 0,
-          fixableWarnings: 0,
-          rules: [
-            {
-              ruleId: 'no-unused-vars',
-              timeMs: 20,
-              errors: 1,
-              warnings: 0,
-              fixable: false,
-            },
-          ],
-        },
-      ],
-    });
-  });
-
-  it('should properly extract timing data from ESLint stats', () => {
+  it('should create a visitor with proper methods', () => {
     const visitor = createProcessEslintResultVisitor();
 
-    if (visitor.visitFile) {
-      visitor.visitFile(file1);
-    }
+    expect(visitor.visitFile).toBeDefined();
+    expect(visitor.visitMessage).toBeDefined();
+    expect(visitor.visitRule).toBeDefined();
+    expect(visitor.getResults).toBeDefined();
+  });
+
+  it('should return results with the correct structure', () => {
+    const visitor = createProcessEslintResultVisitor();
     const result = visitor.getResults();
 
-    expect(result.processedResults[0]).toEqual(
-      expect.objectContaining({
-        parseMs: 10, // from stats.times.passes[0].parse.total
-        fixMs: 40, // from stats.times.passes[0].fix.total
-        totalMs: 100, // from stats.times.passes[0].total
-        rulesMs: 40, // calculated from rules timing (20+20)
-      })
-    );
+    expect(result).toEqual({
+      violations: {},
+      times: {},
+      files: [],
+    });
+  });
+});
+
+describe('processEslintResults', () => {
+  it('should process violations and organize by file and rule', () => {
+    expect(processEslintResults([file1])).toStrictEqual([
+      {
+        filePath: 'file1.js',
+        times: {
+          parse: 10,
+          fix: 40,
+          total: 100,
+          rules: {
+            'no-unused-vars': 20,
+            'no-console': 20,
+          },
+        },
+        violations: {
+          errorCount: 0,
+          warningCount: 0,
+          fixableErrorCount: 0,
+          fixableWarningCount: 0,
+          fatalErrorCount: 0,
+          fixPasses: 0,
+        },
+        rules: [
+          {
+            ruleId: 'no-unused-vars',
+            time: 20,
+            violations: {
+              warningMessages: [
+                {
+                  ruleId: 'no-unused-vars',
+                  severity: 2,
+                },
+              ],
+            },
+          },
+          {
+            ruleId: 'no-console',
+            time: 20,
+            violations: {
+              errorMessages: [
+                {
+                  ruleId: 'no-console',
+                  severity: 1,
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ]);
   });
 
   it('should handle missing timing stats gracefully', () => {
@@ -176,64 +147,17 @@ describe('createProcessEslintResultVisitor', () => {
       // No stats property
     };
 
-    const visitor = createProcessEslintResultVisitor();
-    if (visitor.visitFile) {
-      visitor.visitFile(fileWithoutStats);
-    }
-    const result = visitor.getResults();
+    const result = processEslintResults([fileWithoutStats]);
 
-    expect(result.processedResults[0]).toEqual(
-      expect.objectContaining({
-        parseMs: 0,
-        rulesMs: 0,
-        fixMs: 0,
-        totalMs: 0,
-      })
-    );
-  });
-});
-
-describe('processEslintResults', () => {
-  it('should process violations and organize by file and rule', () => {
-    expect(processEslintResults([file1])).toStrictEqual({
-      totalFiles: 1,
-      totalRules: 2,
-      totalErrors: 1,
-      totalWarnings: 1,
-      totalFixableErrors: 0,
-      totalFixableWarnings: 0,
-      totalFileErrors: 0,
-      totalFileWarnings: 0,
-      totalTimeMs: 100,
-      processedFileResults: [
-        {
-          filePath: 'file1.js',
-          parseMs: 10,
-          rulesMs: 40,
-          fixMs: 40,
-          totalMs: 100,
-          totalErrors: 0,
-          totalWarnings: 0,
-          fixableErrors: 0,
-          fixableWarnings: 0,
-          rules: [
-            {
-              ruleId: 'no-unused-vars',
-              timeMs: 20,
-              errors: 1,
-              warnings: 0,
-              fixable: false,
-            },
-            {
-              ruleId: 'no-console',
-              timeMs: 20,
-              errors: 0,
-              warnings: 1,
-              fixable: false,
-            },
-          ],
-        },
-      ],
+    expect(result.files).toHaveLength(1);
+    expect(result.files[0]).toEqual({
+      filePath: 'file-no-stats.js',
+      times: {
+        parse: 0,
+        fix: 0,
+        total: 0,
+        rules: {},
+      },
     });
   });
 
@@ -265,16 +189,15 @@ describe('processEslintResults', () => {
 
     const result = processEslintResults([file1, file2]);
 
-    expect(result.totalTimeMs).toBe(150); // 100 + 50
-    expect(result.processedResults).toHaveLength(2);
-    expect(result.processedResults[1]).toEqual(
-      expect.objectContaining({
-        filePath: 'file2.js',
-        parseMs: 5,
-        rulesMs: 0,
-        fixMs: 15,
-        totalMs: 50,
-      })
-    );
+    expect(result.files).toHaveLength(2);
+    expect(result.files[1]).toEqual({
+      filePath: 'file2.js',
+      times: {
+        parse: 5,
+        fix: 15,
+        total: 50,
+        rules: {},
+      },
+    });
   });
 });

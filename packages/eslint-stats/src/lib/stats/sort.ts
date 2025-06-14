@@ -1,7 +1,4 @@
-import {
-  ProcessedFileResult,
-  ProcessedRuleResult,
-} from '../parse/processed-eslint-result.types';
+import { ProcessedFile, ProcessedRule } from '../parse/eslint-result-visitor';
 
 export type SortKey =
   | 'time'
@@ -19,42 +16,39 @@ export type SortOptions = {
 };
 
 export const isFile = (
-  entry: ProcessedFileResult | ProcessedRuleResult
-): entry is ProcessedFileResult => {
+  entry: ProcessedFile | ProcessedRule
+): entry is ProcessedFile => {
   return 'filePath' in entry;
 };
 
-const getIdentifier = (
-  entry: ProcessedFileResult | ProcessedRuleResult
-): string => {
+const getIdentifier = (entry: ProcessedFile | ProcessedRule): string => {
   return isFile(entry) ? entry.filePath : entry.ruleId;
 };
 
-const getTimeMs = (
-  entry: ProcessedFileResult | ProcessedRuleResult
-): number => {
-  return isFile(entry) ? entry.totalMs : entry.totalMs;
+const getTimeMs = (entry: ProcessedFile | ProcessedRule): number => {
+  return isFile(entry) ? entry.times.total : entry.time;
 };
 
-const getTotalErrors = (entry: ProcessedFileResult | ProcessedRuleResult) => {
+const getTotalErrors = (entry: ProcessedFile | ProcessedRule) => {
   if (isFile(entry)) {
-    return entry.totalErrors;
+    return entry.violations.errorCount;
   } else {
-    return entry.errors;
+    return entry.violations.errorMessages.length;
   }
 };
 
-const getTotalWarnings = (entry: ProcessedFileResult | ProcessedRuleResult) => {
+const getTotalWarnings = (entry: ProcessedFile | ProcessedRule) => {
   if (isFile(entry)) {
-    return entry.totalWarnings;
+    return entry.violations.warningCount;
   } else {
-    return entry.warnings;
+    return entry.violations.warningMessages.length;
   }
 };
 
-export function sortEsLintStats<
-  T extends ProcessedFileResult | ProcessedRuleResult
->(entries: T[], options: SortOptions = {}): T[] {
+export function sortEsLintStats<T extends ProcessedFile | ProcessedRule>(
+  entries: T[],
+  options: SortOptions = {}
+): T[] {
   const { order = 'desc' } = options;
 
   const getSortKeys = (): SortKey[] => {

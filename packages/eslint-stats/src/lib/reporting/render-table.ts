@@ -1,52 +1,4 @@
-import { ProcessedEslintResultTotals } from '../parse/totals';
-import { NormalizedResult } from './format';
 import ansis from 'ansis';
-
-/**
- * Flattens an array of StringifiedProcessedFileResult/StringifiedProcessedRuleResult objects (including children) into a 2D string array for table rendering,
- * applying indentation to represent hierarchy.
- * @param {(StringifiedProcessedFileResult | StringifiedProcessedRuleResult)[]} entries - The array of entries to flatten.
- * @param {number} [indentLevel=0] - The current level of indentation.
- * @param {string} [indentPrefix='  '] - The string to use for one level of indentation.
- * @returns {string[][]} A 2D array of strings, where each inner array is [indentedIdentifier, timeMsStr, relativePercentStr].
- */
-export function flattenFormattedEntriesToRows(
-  entries: NormalizedResult[],
-  indentLevel = 0,
-  indentPrefix = '  '
-): string[][] {
-  const rows: string[][] = [];
-  for (const entry of entries) {
-    const prefix = indentPrefix.repeat(indentLevel);
-
-    // Check if it's a file entry or rule entry
-    const isFile = entry.type === 'file';
-    const identifier = entry.identifier;
-    const timeMs = entry.ms;
-    const errorCount = entry.errors;
-    const warningCount = entry.warnings;
-
-    rows.push([
-      `${prefix}${identifier}`,
-      timeMs,
-      entry.relativePercent,
-      errorCount,
-      warningCount,
-    ]);
-
-    // Handle children (rules within files)
-    if (isFile && entry.children && entry.children.length > 0) {
-      rows.push(
-        ...flattenFormattedEntriesToRows(
-          entry.children,
-          indentLevel + 1,
-          indentPrefix
-        )
-      );
-    }
-  }
-  return rows;
-}
 
 /**
  * Align the string to left
@@ -88,11 +40,15 @@ export function renderTable(
   displayRows: string[][],
   options: {
     headers: string[];
-    stats: ProcessedEslintResultTotals;
     borderColor?: (str: string) => string;
+    maxFirstColumnWidth?: number;
   }
 ): string {
-  const { headers, borderColor } = options;
+  const {
+    headers,
+    borderColor = ansis.dim.gray,
+    maxFirstColumnWidth = 80,
+  } = options;
 
   if (displayRows.length === 0) {
     return 'No data to display.';
@@ -108,9 +64,19 @@ export function renderTable(
     row.forEach((cell, i) => {
       const cleanCell = cell.replace(/%%SEP%%/g, '');
       const cellLength = stripAnsi(cleanCell).length;
-      if (!widths[i] || cellLength > widths[i]) {
-        widths[i] = cellLength;
+
+      // Special handling for first column - limit its width
+      if (i === 0) {
+        const constrainedLength = Math.min(cellLength, maxFirstColumnWidth);
+        if (!widths[i] || constrainedLength > widths[i]) {
+          widths[i] = constrainedLength;
+        }
+      } else {
+        if (!widths[i] || cellLength > widths[i]) {
+          widths[i] = cellLength;
+        }
       }
+
       if (i === 3 || i === 4) {
         const parts = stripAnsi(cell).split('%%SEP%%');
         const numPart = parts[0].match(/\d+/) ? parts[0] : '';
@@ -175,7 +141,7 @@ export function renderTable(
         const strippedForAlign = stripAnsi(cellToAlign);
         const lenForAlign = strippedForAlign.length;
         const width = widths[index];
-        const padding = width - lenForAlign;
+        const padding = Math.max(0, width - lenForAlign);
 
         if (cellToAlign.length > lenForAlign) {
           // has ANSI

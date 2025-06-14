@@ -34,20 +34,42 @@ describe('walkEslintResult', () => {
     };
     walkEslintResult(mockResults, visitor);
 
-    expect(visitor.visitFile).toHaveBeenCalledWith(mockResults[0]);
+    expect(visitor.visitFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filePath: 'test.js',
+        violations: expect.objectContaining({
+          errorCount: 1,
+          fatalErrorCount: 0,
+          warningCount: 0,
+          fixableErrorCount: 0,
+          fixableWarningCount: 0,
+        }),
+        times: expect.objectContaining({
+          parse: 0,
+          fix: 0,
+          total: 0,
+          rules: {},
+        }),
+        rules: [],
+      })
+    );
     expect(visitor.visitFile).toHaveBeenCalledTimes(1);
     expect(visitor.visitMessage).toHaveBeenCalledWith(
       mockResults[0].messages[0],
-      mockResults[0]
+      expect.objectContaining({ filePath: 'test.js' })
     );
     expect(visitor.visitMessage).toHaveBeenCalledTimes(1);
     expect(visitor.visitRule).toHaveBeenCalledWith(
-      {
+      expect.objectContaining({
         ruleId: 'no-unused-vars',
-        messages: [mockResults[0].messages[0]],
-        timeMs: 0,
-      },
-      mockResults[0]
+        violations: expect.objectContaining({
+          errorMessages: [],
+          warningMessages: [mockResults[0].messages[0]],
+          offMessages: [],
+        }),
+        time: 0,
+      }),
+      expect.objectContaining({ filePath: 'test.js' })
     );
     expect(visitor.visitRule).toHaveBeenCalledTimes(1);
   });

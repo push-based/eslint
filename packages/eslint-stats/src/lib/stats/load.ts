@@ -1,8 +1,8 @@
 import { readFileSync } from 'fs';
 import { processEslintResults } from '../parse/eslint-result.visitor';
-import { ProcessedEslintRulesStats } from '../parse/processed-eslint-result.types';
+import { ProcessedEslintResult } from '../parse/eslint-result-visitor';
 
-export function loadStats(file: string): ProcessedEslintRulesStats {
+export function loadStats(file: string): ProcessedEslintResult {
   try {
     const jsonContent = readFileSync(file, 'utf-8');
     const lintResults = JSON.parse(jsonContent);

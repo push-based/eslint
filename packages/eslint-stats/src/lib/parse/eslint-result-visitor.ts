@@ -1,21 +1,54 @@
-import type { ESLint, Linter } from 'eslint';
+import type { Linter } from 'eslint';
 
-type ESLintResult = ESLint.LintResult;
 type EslintMessage = Linter.LintMessage;
 
 export interface EslintResultVisitor {
-  visitFile?(fileResult: ESLintResult): void | boolean;
+  visitFile?(fileResult: ProcessedFile): void | boolean;
 
   visitMessage?(
     message: EslintMessage,
-    fileResult: ESLintResult
+    fileResult: ProcessedFile
   ): void | boolean;
 
-  visitRule?(ruleData: RuleVisitData, fileResult: ESLintResult): void | boolean;
+  visitRule?(
+    ruleData: ProcessedRule,
+    fileResult: ProcessedFile
+  ): void | boolean;
 }
 
-export interface RuleVisitData {
+export type ProcessedRule = {
   ruleId: string;
-  messages: EslintMessage[];
-  timeMs: number;
-}
+  violations: {
+    errorMessages: EslintMessage[];
+    warningMessages: EslintMessage[];
+    offMessages: EslintMessage[];
+  };
+  time: number;
+};
+
+export type ProcessedFile = {
+  filePath: string;
+  violations: {
+    errorCount: number;
+    fatalErrorCount: number;
+    warningCount: number;
+    fixableErrorCount: number;
+    fixableWarningCount: number;
+    fixPasses: number;
+  };
+  times: {
+    parse: number;
+    rules: Record<string, number>;
+    fix: number;
+    total: number;
+  };
+  rules: ProcessedRule[];
+};
+
+export type ProcessedEslintResult = {
+  times: {
+    total: number;
+  };
+  violations: {};
+  files: ProcessedFile[];
+};

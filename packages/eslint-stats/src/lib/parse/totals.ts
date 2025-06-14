@@ -1,7 +1,4 @@
-import {
-  ProcessedFileResult,
-  ProcessedRuleResult,
-} from './processed-eslint-result.types';
+import {ProcessedFile, ProcessedRule} from "./eslint-result-visitor";
 
 /**
  * Common totals interface that can be used across different visitors and grouping strategies
@@ -36,26 +33,22 @@ export function createProcessedTotalsTracker() {
   };
 
   return {
-    trackFile(fileResult: ProcessedFileResult): void {
-      totals.totalTimeMs += fileResult.totalMs;
+    trackFile(fileResult: ProcessedFile): void {
+      totals.totalTimeMs += fileResult.times.total;
       totals.totalFiles += 1;
-      totals.totalFileErrors += fileResult.totalErrors;
-      totals.totalFileWarnings += fileResult.totalWarnings;
-      totals.totalFixableErrors += fileResult.fixableErrors ? 1 : 0;
-      totals.totalFixableWarnings += fileResult.fixableWarnings ? 1 : 0;
+      totals.totalFileErrors += fileResult.violations.errorCount;
+      totals.totalFileWarnings += fileResult.violations.warningCount;
+      totals.totalFixableErrors += fileResult.violations.fixableErrorCount;
+      totals.totalFixableWarnings += fileResult.violations.fixableWarningCount;
     },
 
-    trackRule(ruleResult: ProcessedRuleResult): void {
-      totals.totalErrors += ruleResult.errors;
-      totals.totalWarnings += ruleResult.warnings;
-    },
-
-    setTotalRules(count: number): void {
-      totals.totalRules = count;
+    trackRule(ruleResult: ProcessedRule): void {
+      totals.totalErrors += ruleResult.violations.errorMessages.length;
+      totals.totalWarnings += ruleResult.violations.warningMessages.length;
     },
 
     getTotals(): ProcessedEslintResultTotals {
-      return { ...totals };
+      return totals;
     },
   };
 }
