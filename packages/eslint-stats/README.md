@@ -56,7 +56,7 @@ This guide provides instructions for using the `@push-based/eslint-stats` CLI.
 **Usage:**
 
 ```bash
-npx @push-based/eslint-stats measure <files...> [options...]
+npx @push-based/eslint-stats measure [args...] [options...]
 ```
 
 **Description:**
@@ -64,24 +64,31 @@ Runs ESLint on a given set of files and measures timing stats. This command is a
 
 **Arguments:**
 
-| Argument         | Type       | Description                            |
-| ---------------- | ---------- | -------------------------------------- |
-| **`<files...>`** | `string[]` | Paths to files or directories to lint. |
+| Argument        | Type       | Description                                                                                                                              |
+| --------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **`[args...]`** | `string[]` | Arguments for ESLint, e.g., files, globs, or commands like `nx run my-app:lint`. If omitted, ESLint runs on the current directory. |
 
 **ESLint Options:**
 
-| Option              | Alias | Type      | Description                         |
-| ------------------- | ----- | --------- | ----------------------------------- |
-| **`--config`**      | `-c`  | `string`  | Path to the ESLint config file.     |
-| **`--format`**      |       | `string`  | ESLint output format.               |
-| **`--output-file`** | `-o`  | `string`  | File to write the ESLint output to. |
-| **`--quiet`**       |       | `boolean` | Report errors only.                 |
+| Option              | Alias | Type     | Description                         |
+| ------------------- | ----- | -------- | ----------------------------------- |
+| **`--config`**      | `-c`  | `string` | Path to the ESLint config file.     |
+| **`--output-file`** | `-o`  | `string` | File to write the ESLint output to. |
+
+**Stats Options:**
+
+| Option              | Type      | Default | Description                                     |
+| ------------------- | --------- | ------- | ----------------------------------------------- |
+| **`--file-output`** | `string`  |         | File to write the stats to.                     |
+| **`--show`**        | `boolean` | `true`  | Show the stats report after running the command.  |
+| **`--interactive`** | `boolean` | `true`  | Show the stats report as an interactive table. |
 
 **Examples:**
 
 - `eslint-stats measure "src/**/*.ts"` - Lint all TypeScript files in the `src` directory.
-- `eslint-stats measure "src/**/*.ts" --config ./.eslintrc.ci.js --format json --output-file eslint-report.json` - Lint files with a specific config and output format.
-- `eslint-stats measure "src/**/*.ts" --stats-output-file stats.json` - Lint files and save performance statistics to `stats.json`.
+- `eslint-stats measure "src/**/*.ts" --config ./.eslintrc.ci.js --output-file eslint-report.json` - Lint files with a specific config and output file.
+- `eslint-stats measure "src/**/*.ts" --file-output stats.json` - Lint files and save performance statistics to `stats.json`.
+- `eslint-stats measure nx run project-name:lint` - Lint files using a command.
 
 ### `analyse` command
 
