@@ -20,14 +20,14 @@ import { ESLint } from 'eslint';
 import {
   renderInteractiveEsLintStatsView,
   EslintStatsViewOptions,
-} from './views/plots';
+} from '../../../stats';
 import {
   groupByOptions,
   InteractiveCommandState,
   sortByOptions,
-} from './views/command-state';
-import { createInteractiveOptions } from './views/utils';
-import { processEslintResults } from '../../../parse/eslint-result.visitor';
+} from './command-state';
+import { createInteractiveOptions } from './utils';
+import { processEslintResults } from '../../../parse';
 
 export function handleGlobalActions(
   key: string,
@@ -45,6 +45,7 @@ export function handleGlobalActions(
   switch (key) {
     case CTRL_C:
       process.exit(0);
+      break;
     default:
       return;
   }

@@ -1,10 +1,9 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { renderTable } from './render-table';
-import { FormattedDisplayEntry } from './format';
+import { renderTable } from './render-table'; 
 
 describe('render-table', () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
-  let testData: FormattedDisplayEntry[];
+  let testData: Record<string, unknown>[];
 
   beforeEach(() => {
     // Reset test data before each test
@@ -16,7 +15,7 @@ describe('render-table', () => {
   });
 
   it('should print a formatted table with a single entry', () => {
-    const testData: FormattedDisplayEntry[] = [
+    const testData = [
       {
         identifier: 'rule-A',
         timeMs: '100 ms',
@@ -39,7 +38,7 @@ describe('render-table', () => {
   });
 
   it('should print a formatted table with multiple entries', () => {
-    const testData: FormattedDisplayEntry[] = [
+    const testData = [
       {
         identifier: 'rule-A',
         timeMs: '100 ms',
@@ -73,7 +72,7 @@ describe('render-table', () => {
   });
 
   it('should print a formatted table with nested entries', () => {
-    const testData: FormattedDisplayEntry[] = [
+    const testData = [
       {
         identifier: 'file-A',
         timeMs: '200 ms',
@@ -119,7 +118,7 @@ describe('render-table', () => {
   });
 
   it('should correctly align columns based on content width', () => {
-    const testData: FormattedDisplayEntry[] = [
+    const testData = [
       {
         identifier: 'a-very-long-rule-name',
         timeMs: '10.123 ms',
@@ -142,14 +141,14 @@ describe('render-table', () => {
   });
 
   it('should handle empty data array', () => {
-    const testData: FormattedDisplayEntry[] = [];
+    const testData = [];
     renderTable(testData);
     expect(consoleSpy).toHaveBeenCalledTimes(1);
     expect(consoleSpy).toHaveBeenCalledWith('No data to display.');
   });
 
   it('should handle entries with empty children array', () => {
-    const testData: FormattedDisplayEntry[] = [
+    const testData = [
       {
         identifier: 'file-A',
         timeMs: '200 ms',

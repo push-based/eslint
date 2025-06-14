@@ -9,7 +9,7 @@ import {
   groupByOptions,
   SortByOption,
   sortByOptions,
-} from './views/command-state';
+} from './command-state';
 
 export interface AnalyseArgs {
   interactive?: boolean;

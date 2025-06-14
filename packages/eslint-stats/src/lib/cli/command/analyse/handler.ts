@@ -4,12 +4,12 @@ import {
   groupByOptions,
   sortByOptions,
   InteractiveCommandState,
-} from './views/command-state';
+} from './command-state';
 import {
   EslintStatsViewOptions,
   renderInteractiveEsLintStatsView,
-} from './views/plots';
-import { loadStats } from '../../../stats/load';
+  loadStats
+} from '../../../stats';
 import { readFileSync } from 'fs';
 import { ESLint } from 'eslint';
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import main from '../cli/core/main';
+import { main } from '../cli';
 
 console.log('Starting eslint-stats application...');
 
