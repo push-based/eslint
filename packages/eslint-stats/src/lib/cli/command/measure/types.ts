@@ -1,8 +1,9 @@
 export interface MeasureArgs {
-  _?: string[];
+  args?: string[];
   config?: string;
-  'output-file'?: string;
   outputFile?: string;
+  fileOutput?: string;
   quiet?: boolean;
-  [key: string]: any;
+  show?: boolean;
+  interactive?: boolean;
 }

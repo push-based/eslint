@@ -12,53 +12,46 @@ function formatCommandLog(command: string, args: string[] = []): string {
 }
 
 export async function runEslintWithStats(
-  command: string,
-  args: Record<string, ArgumentValue>,
+  command: string[],
+  args: string[],
   options: {
-    stats: boolean;
-    statsOutputFile?: string;
-    statsFormat?: string;
-  },
+    outputFile?: string;
+  } = {},
   logger: { log: (...args: string[]) => void } = console,
   env: Record<string, string | undefined> = process.env
 ): Promise<Pick<ProcessResult, 'code'>> {
-  const { stats, statsOutputFile, statsFormat } = options;
+  const { outputFile } = options;
 
-  const statsArgs: Record<string, ArgumentValue> = {};
+  const envWithTiming = { ...env };
 
-  if (stats) {
-    statsArgs['stats'] = true;
-    if (statsOutputFile) {
-      statsArgs['output-file'] = statsOutputFile;
-    }
-    if (statsFormat) {
-      statsArgs['format'] = statsFormat;
-    }
-  }
+  const [executable, ...commandArgs] = command;
 
-  const allArgs = { ...args, ...statsArgs };
-  const argsArray = objectToCliArgs(allArgs);
+  const eslintArgs = objectToCliArgs({
+    stats: true,
+    format: 'json',
+    'output-file': outputFile,
+  });
 
-  logger.log(formatCommandLog(command, argsArray));
+  const allArgs = [...commandArgs, ...args, '--', ...eslintArgs];
+
+  logger.log(formatCommandLog(executable, allArgs));
 
   try {
     const result = await executeProcess({
-      command,
-      args: argsArray,
-      env: env,
+      command: executable,
+      args: allArgs,
+      env: envWithTiming,
+      ignoreExitCode: true,
       observer: {
-        onStdout: (stdout: string) => {
-          logger.log(stdout);
+        onStdout: () => {
+          // do nothing to silence the output
         },
         onStderr: (stderr: string) => {
-          logger.log(stderr);
+          // stats are written to stderr
+          logger.log(ansis.gray(stderr));
         },
       },
     });
-
-    if (statsOutputFile) {
-      logger.log(`Stats file generated - ${statsOutputFile}`);
-    }
 
     return { code: result.code };
   } catch (error) {

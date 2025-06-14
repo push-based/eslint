@@ -1,4 +1,4 @@
-import { AnalyseArgs } from './analyse.command';
+import { AnalyseArgs } from './types';
 import { startInteractiveSession } from './interactive';
 import {
   groupByOptions,
@@ -8,13 +8,13 @@ import {
 import {
   EslintStatsViewOptions,
   renderInteractiveEsLintStatsView,
-  loadStats
+  loadStats,
 } from '../../../stats';
 import { readFileSync } from 'fs';
 import { ESLint } from 'eslint';
 
 function initInteractiveState(argv: AnalyseArgs): InteractiveCommandState {
-  const take = argv.take?.map((n) => Number(n)) ?? [10];
+  const take = argv.take?.map((n: number | string) => Number(n)) ?? [10];
 
   return {
     groupByIndex: groupByOptions.indexOf(argv.groupBy),
@@ -56,7 +56,7 @@ export async function analyseHandler(argv: AnalyseArgs): Promise<void> {
   try {
     // Ensure take is always a number array
     if (argv.take) {
-      argv.take = argv.take.map((n) => Number(n));
+      argv.take = argv.take.map((n: number | string) => Number(n));
     }
 
     const userRequestedInteractive = process.argv.includes('--interactive');

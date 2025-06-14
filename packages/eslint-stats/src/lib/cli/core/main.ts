@@ -1,28 +1,17 @@
+#!/usr/bin/env node
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { analyseCommand } from '../command/analyse/analyse.command';
 import measureCommand from '../command/measure';
+import { analyseCommand } from '../command/analyse/analyse.command';
 
-export async function main(): Promise<void> {
-  const cli = yargs(hideBin(process.argv))
+export function main() {
+  yargs(hideBin(process.argv))
     .scriptName('eslint-stats')
-    .usage('Usage: $0 <command>')
-    .recommendCommands()
-    .help()
-    .alias('help', 'h')
-    .version()
-    .wrap(100);
-
-  // Register all commands
-  cli.command({
-    ...analyseCommand,
-    command: ['$0 <file>', 'analyse <file>'],
-  });
-  cli.command({
-    ...measureCommand,
-  });
-
-  await cli.parse();
+    .usage('$0 <command> [options]')
+    .command(measureCommand)
+    .command(analyseCommand)
+    .demandCommand(1, 'You need at least one command before moving on')
+    .help().argv;
 }
 
 export default main;

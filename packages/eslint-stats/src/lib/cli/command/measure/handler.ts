@@ -1,39 +1,50 @@
-import type { MeasureArgs } from './types';
-import { filterCliOptions } from './utils';
 import { runEslintWithStats } from '../../../stats/run-eslint-with-stats';
+import { analyseHandler } from '../analyse/handler';
+import { AnalyseArgs, group, sort, sortDirection } from '../analyse/types';
+import { join } from 'path';
+import { MeasureArgs } from './types';
+import { objectToCliArgs } from '../../../stats/run-eslint-with-stats';
 
 export async function handler(argv: MeasureArgs): Promise<void> {
-  const { _: positionalArgs = [], $0, ...options } = argv;
-  const files = positionalArgs as string[];
+  const { show: showReport, args, fileOutput, interactive, ...restArgv } = argv;
 
-  const statsOptions = {
-    stats: true,
-    statsOutputFile: options.statsOutputFile || options['stats-output-file'],
-    statsFormat: options.statsFormat || options['stats-format'],
-  };
+  let outputFile = fileOutput;
+  if (!outputFile) {
+    outputFile = join(process.cwd(), `eslint-stats.json`);
+  }
 
-  const eslintOptions = { ...options };
-  delete eslintOptions.statsOutputFile;
-  delete eslintOptions['stats-output-file'];
-  delete eslintOptions.statsFormat;
-  delete eslintOptions['stats-format'];
-  delete eslintOptions['sof'];
-  delete eslintOptions['sf'];
+  const command = args || [];
 
-  const filteredEslintOptions = filterCliOptions(eslintOptions);
+  if (command.length === 0) {
+    console.error('Error: No command provided to measure.');
+    process.exit(1);
+  }
 
-  const eslintArgs = {
-    _: files,
-    ...filteredEslintOptions,
-  };
+  const additionalArgs = objectToCliArgs(restArgv);
 
   try {
-    const eslintCommand = options['eslint-command'] || 'eslint';
     const result = await runEslintWithStats(
-      eslintCommand,
-      eslintArgs,
-      statsOptions
+      command,
+      additionalArgs,
+      {
+        outputFile,
+      },
+      console
     );
+
+    if (showReport) {
+      const analyseArgs: AnalyseArgs = {
+        file: outputFile,
+        // using defaults from yargs in analyse.command.ts
+        groupBy: group.rule,
+        sortBy: sort.time,
+        sortDirection: sortDirection.desc,
+        show: [],
+        interactive,
+      };
+      await analyseHandler(analyseArgs);
+      return;
+    }
 
     if (result.code !== 0) {
       process.exit(result.code || 1);

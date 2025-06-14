@@ -3,72 +3,44 @@
  * aggregate the rule timings, and display them in a formatted table.
  */
 import type { Argv, CommandModule } from 'yargs';
+import { AnalyseArgs, group, sort, sortDirection } from './types';
 import { analyseHandler } from './handler';
-import {
-  GroupByOption,
-  groupByOptions,
-  SortByOption,
-  sortByOptions,
-} from './command-state';
-
-export interface AnalyseArgs {
-  interactive?: boolean;
-  file: string;
-  groupBy: GroupByOption;
-  sortBy: SortByOption;
-  sortDirection: 'asc' | 'desc';
-  show: string[];
-  take?: (string | number)[];
-  outPath?: string;
-}
 
 export const analyseCommand: CommandModule<object, AnalyseArgs> = {
   command: 'analyse <file>',
-  describe: 'Analyse ESLint stats JSON file',
+  aliases: ['analyze'],
+  describe: 'Analyse a given eslint-stats.json file.',
   builder: (yargs: Argv): Argv<AnalyseArgs> => {
     return yargs
       .positional('file', {
+        describe: 'Path to eslint-stats.json file.',
         type: 'string',
-        description: 'Path to the ESLint stats JSON file',
+        demandOption: true,
       })
-      .demandOption('file')
-      .group(
-        ['groupBy', 'sortBy', 'sortDirection', 'take', 'outPath', 'help'],
-        'Formatting Options:'
-      )
-      .option('groupBy', {
+      .option('group-by', {
+        describe: 'Group stats by a given criteria.',
         alias: 'g',
-        description: 'Group by "rule", "file", or "file-rule"',
-        default: 'rule',
-        choices: groupByOptions,
+        default: group.rule,
+        choices: Object.values(group),
       })
-      .option('sortBy', {
+      .option('sort-by', {
+        describe: 'Sort stats by a given criteria.',
         alias: 's',
-        description: 'Sort by "time" or "violations"',
-        default: 'time',
-        choices: sortByOptions,
+        default: sort.time,
+        choices: Object.values(sort),
       })
-      .option('sortDirection', {
+      .option('sort-direction', {
+        describe: 'Sort direction.',
         alias: 'd',
-        description: 'Sort direction "asc" or "desc"',
-        default: 'desc',
-        choices: ['asc', 'desc'],
+        default: sortDirection.desc,
+        choices: Object.values(sortDirection),
       })
-      .option('take', {
-        alias: 't',
+      .option('show', {
+        describe: 'What to show in the report.',
+        alias: 'w',
+        default: [],
+        choices: ['rules-with-warnings', 'rules-with-fixable-warnings'],
         type: 'array',
-        description:
-          'The number of entries to display. For `file-rule` group, two values can be provided for files and rules.',
-      })
-      .option('outPath', {
-        type: 'string',
-        description:
-          'Path to the output file. Defaults to the input file name with a .md extension.',
-      })
-      .option('interactive', {
-        type: 'boolean',
-        description: 'Interactive mode',
-        default: process.stdout.isTTY,
       }) as unknown as Argv<AnalyseArgs>;
   },
   handler: analyseHandler,

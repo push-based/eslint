@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "bin": {
-    "eslint-stats": "./dist/eslint-stats.cjs"
+    "eslint-stats": "./dist/eslint-stats.js"
   },
   "main": "./index.js",
   "types": "./index.d.ts",
@@ -12,6 +12,10 @@
     ".": {
       "import": "./index.js",
       "require": "./index.cjs"
+    },
+    "./eslint-stats": {
+      "import": "./dist/eslint-stats.js",
+      "require": "./dist/eslint-stats.cjs"
     },
     "./package.json": "./package.json"
   },
