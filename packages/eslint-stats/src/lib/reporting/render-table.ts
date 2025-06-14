@@ -41,14 +41,10 @@ export function renderTable(
   options: {
     headers: string[];
     borderColor?: (str: string) => string;
-    maxFirstColumnWidth?: number;
+    width?: number[];
   }
 ): string {
-  const {
-    headers,
-    borderColor = ansis.dim.gray,
-    maxFirstColumnWidth = 80,
-  } = options;
+  const { headers, borderColor = ansis.dim.gray, width } = options;
 
   if (displayRows.length === 0) {
     return 'No data to display.';
@@ -65,16 +61,11 @@ export function renderTable(
       const cleanCell = cell.replace(/%%SEP%%/g, '');
       const cellLength = stripAnsi(cleanCell).length;
 
-      // Special handling for first column - limit its width
-      if (i === 0) {
-        const constrainedLength = Math.min(cellLength, maxFirstColumnWidth);
-        if (!widths[i] || constrainedLength > widths[i]) {
-          widths[i] = constrainedLength;
-        }
-      } else {
-        if (!widths[i] || cellLength > widths[i]) {
-          widths[i] = cellLength;
-        }
+      // Use provided width if available, otherwise calculate from content
+      if (width && width[i] !== undefined) {
+        widths[i] = width[i];
+      } else if (!widths[i] || cellLength > widths[i]) {
+        widths[i] = cellLength;
       }
 
       if (i === 3 || i === 4) {
