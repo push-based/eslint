@@ -19,7 +19,6 @@ export interface AnalyseArgs {
   groupBy: group;
   sortBy: sort;
   sortDirection: sortDirection;
-  show: string[];
   take?: (string | number)[];
   interactive?: boolean;
 }

@@ -5,6 +5,7 @@
 import type { Argv, CommandModule } from 'yargs';
 import { AnalyseArgs, group, sort, sortDirection } from './types';
 import { analyseHandler } from './handler';
+import { join } from 'path';
 
 export const analyseCommand: CommandModule<object, AnalyseArgs> = {
   command: 'analyse <file>',
@@ -16,6 +17,7 @@ export const analyseCommand: CommandModule<object, AnalyseArgs> = {
         describe: 'Path to eslint-stats.json file.',
         type: 'string',
         demandOption: true,
+        default: join(process.cwd(), 'eslint-stats.json'),
       })
       .option('group-by', {
         describe: 'Group stats by a given criteria.',
@@ -35,12 +37,10 @@ export const analyseCommand: CommandModule<object, AnalyseArgs> = {
         default: sortDirection.desc,
         choices: Object.values(sortDirection),
       })
-      .option('show', {
-        describe: 'What to show in the report.',
-        alias: 'w',
-        default: [],
-        choices: ['rules-with-warnings', 'rules-with-fixable-warnings'],
-        type: 'array',
+      .option('interactive', {
+        describe: 'Control the table over terminal input',
+        type: 'boolean',
+        default: true,
       }) as unknown as Argv<AnalyseArgs>;
   },
   handler: analyseHandler,

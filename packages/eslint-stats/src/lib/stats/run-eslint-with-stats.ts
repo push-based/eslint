@@ -1,6 +1,7 @@
 import * as ansis from 'ansis';
 import { executeProcess, type ProcessResult } from './execute-process';
 import * as process from 'node:process';
+import { join } from 'node:path';
 
 function formatCommandLog(command: string, args: string[] = []): string {
   const logElements: string[] = [];
@@ -20,7 +21,7 @@ export async function runEslintWithStats(
   logger: { log: (...args: string[]) => void } = console,
   env: Record<string, string | undefined> = process.env
 ): Promise<Pick<ProcessResult, 'code'>> {
-  const { outputFile } = options;
+  const { outputFile = join(process.cwd(), 'eslint.stats.json') } = options;
 
   const envWithTiming = { ...env };
 
