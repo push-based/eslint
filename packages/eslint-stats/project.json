@@ -10,9 +10,7 @@
       "dependsOn": ["build"],
       "command": "node {projectRoot}/dist/eslint-stats.js analyse",
       "options": {
-        "args": [
-          "./eslint.stats.json"
-        ]
+        "args": ["./eslint.stats.json"]
       }
     },
     "measure": {

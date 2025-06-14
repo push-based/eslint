@@ -35,7 +35,7 @@ You can add a env variable to use eslints native printing to see [N] results in 
 TIMING=10 npx eslint . --output-file eslint-stats.json --stats -f json
 ```
 
-This command tells ESLint to lint the current directory (`.`), collect performance statistics (`--stats`), format the output as JSON (`-f json`), and save it to a file named `eslint-stats.json`  (`--output-file`).
+This command tells ESLint to lint the current directory (`.`), collect performance statistics (`--stats`), format the output as JSON (`-f json`), and save it to a file named `eslint-stats.json` (`--output-file`).
 
 ---
 
@@ -64,18 +64,18 @@ Runs ESLint on a given set of files and measures timing stats. This command is a
 
 **Arguments:**
 
-| Argument | Type | Description |
-| --- | --- | --- |
+| Argument         | Type       | Description                            |
+| ---------------- | ---------- | -------------------------------------- |
 | **`<files...>`** | `string[]` | Paths to files or directories to lint. |
 
 **ESLint Options:**
 
-| Option | Alias | Type | Description |
-| --- | --- | --- | --- |
-| **`--config`** | `-c` | `string` | Path to the ESLint config file. |
-| **`--format`** | | `string` | ESLint output format. |
-| **`--output-file`** | `-o` | `string` | File to write the ESLint output to. |
-| **`--quiet`** | | `boolean` | Report errors only. |
+| Option              | Alias | Type      | Description                         |
+| ------------------- | ----- | --------- | ----------------------------------- |
+| **`--config`**      | `-c`  | `string`  | Path to the ESLint config file.     |
+| **`--format`**      |       | `string`  | ESLint output format.               |
+| **`--output-file`** | `-o`  | `string`  | File to write the ESLint output to. |
+| **`--quiet`**       |       | `boolean` | Report errors only.                 |
 
 **Examples:**
 
@@ -96,20 +96,20 @@ Analyzes an ESLint statistics JSON file to provide insights into rule performanc
 
 **Arguments:**
 
-| Argument   | Type     | Description                            |
-| ---------- | -------- | -------------------------------------- |
-| **`<file>`** | `string` | Path to the ESLint stats JSON file     |
+| Argument     | Type     | Description                        |
+| ------------ | -------- | ---------------------------------- |
+| **`<file>`** | `string` | Path to the ESLint stats JSON file |
 
 **Options:**
 
-| Option | Alias | Type | Default | Description |
-|-------------------------|-----------|-----------|----------------|------------------------------------------------------------------------------------------------------------------|
-| **`--groupBy`** | `-g` | `string` | `rule` | Group by "rule", "file", or "file-rule". Choices: `rule`, `file`, `file-rule`. |
-| **`--sortBy`** | `-s`| `string` | `time`| Sort by "time" or "violations". Choices: `time`, `violations`. |
-| **`--sortDirection`** | `-d` | `string` | `desc` | Sort direction "asc" or "desc". Choices: `asc`, `desc`. |
-| **`--take`** | `-t` | `array` | | The number of entries to display. For `file-rule` group, two values can be provided for files and rules. |
-| **`--outPath`** | | `string` | | Path to the output file. Defaults to the input file name with a .md extension. |
-| **`--interactive`** | | `boolean` | `true` (if TTY) | Interactive mode to dynamically explore the performance data. |
+| Option                | Alias | Type      | Default         | Description                                                                                              |
+| --------------------- | ----- | --------- | --------------- | -------------------------------------------------------------------------------------------------------- |
+| **`--groupBy`**       | `-g`  | `string`  | `rule`          | Group by "rule", "file", or "file-rule". Choices: `rule`, `file`, `file-rule`.                           |
+| **`--sortBy`**        | `-s`  | `string`  | `time`          | Sort by "time" or "violations". Choices: `time`, `violations`.                                           |
+| **`--sortDirection`** | `-d`  | `string`  | `desc`          | Sort direction "asc" or "desc". Choices: `asc`, `desc`.                                                  |
+| **`--take`**          | `-t`  | `array`   |                 | The number of entries to display. For `file-rule` group, two values can be provided for files and rules. |
+| **`--outPath`**       |       | `string`  |                 | Path to the output file. Defaults to the input file name with a .md extension.                           |
+| **`--interactive`**   |       | `boolean` | `true` (if TTY) | Interactive mode to dynamically explore the performance data.                                            |
 
 **Examples:**
 
