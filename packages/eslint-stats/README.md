@@ -35,7 +35,7 @@ You can add a env variable to use eslints native printing to see [N] results in 
 TIMING=10 npx eslint . --output-file eslint-stats.json --stats -f json
 ```
 
-This command tells ESLint to lint the current directory (`.`), collect performance statistics (`--stats`), format the output as JSON (`-f json`), and save it to a file named `eslint-stats.json`  (`--output-file`).
+This command tells ESLint to lint the current directory (`.`), collect performance statistics (`--stats`), format the output as JSON (`-f json`), and save it to a file named `eslint-stats.json` (`--output-file`).
 
 ---
 
@@ -51,6 +51,45 @@ npm install @push-based/eslint-stats
 
 This guide provides instructions for using the `@push-based/eslint-stats` CLI.
 
+### `measure` command
+
+**Usage:**
+
+```bash
+npx @push-based/eslint-stats measure [args...] [options...]
+```
+
+**Description:**
+Runs ESLint on a given set of files and measures timing stats. This command is a wrapper around the ESLint CLI, adding the ability to capture timing statistics.
+
+**Arguments:**
+
+| Argument        | Type       | Description                                                                                                                              |
+| --------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **`[args...]`** | `string[]` | Arguments for ESLint, e.g., files, globs, or commands like `nx run my-app:lint`. If omitted, ESLint runs on the current directory. |
+
+**ESLint Options:**
+
+| Option              | Alias | Type     | Description                         |
+| ------------------- | ----- | -------- | ----------------------------------- |
+| **`--config`**      | `-c`  | `string` | Path to the ESLint config file.     |
+| **`--output-file`** | `-o`  | `string` | File to write the ESLint output to. |
+
+**Stats Options:**
+
+| Option              | Type      | Default | Description                                     |
+| ------------------- | --------- | ------- | ----------------------------------------------- |
+| **`--file-output`** | `string`  |         | File to write the stats to.                     |
+| **`--show`**        | `boolean` | `true`  | Show the stats report after running the command.  |
+| **`--interactive`** | `boolean` | `true`  | Show the stats report as an interactive table. |
+
+**Examples:**
+
+- `eslint-stats measure "src/**/*.ts"` - Lint all TypeScript files in the `src` directory.
+- `eslint-stats measure "src/**/*.ts" --config ./.eslintrc.ci.js --output-file eslint-report.json` - Lint files with a specific config and output file.
+- `eslint-stats measure "src/**/*.ts" --file-output stats.json` - Lint files and save performance statistics to `stats.json`.
+- `eslint-stats measure nx run project-name:lint` - Lint files using a command.
+
 ### `analyse` command
 
 **Usage:**
@@ -64,20 +103,20 @@ Analyzes an ESLint statistics JSON file to provide insights into rule performanc
 
 **Arguments:**
 
-| Argument   | Type     | Description                            |
-| ---------- | -------- | -------------------------------------- |
-| **`<file>`** | `string` | Path to the ESLint stats JSON file     |
+| Argument     | Type     | Description                        |
+| ------------ | -------- | ---------------------------------- |
+| **`<file>`** | `string` | Path to the ESLint stats JSON file |
 
 **Options:**
 
-| Option | Alias | Type | Default | Description |
-|-------------------------|-----------|-----------|----------------|------------------------------------------------------------------------------------------------------------------|
-| **`--groupBy`** | `-g` | `string` | `rule` | Group by "rule", "file", or "file-rule". Choices: `rule`, `file`, `file-rule`. |
-| **`--sortBy`** | `-s`| `string` | `time`| Sort by "time" or "violations". Choices: `time`, `violations`. |
-| **`--sortDirection`** | `-d` | `string` | `desc` | Sort direction "asc" or "desc". Choices: `asc`, `desc`. |
-| **`--take`** | `-t` | `array` | | The number of entries to display. For `file-rule` group, two values can be provided for files and rules. |
-| **`--outPath`** | | `string` | | Path to the output file. Defaults to the input file name with a .md extension. |
-| **`--interactive`** | | `boolean` | `true` (if TTY) | Interactive mode to dynamically explore the performance data. |
+| Option                | Alias | Type      | Default         | Description                                                                                              |
+| --------------------- | ----- | --------- | --------------- | -------------------------------------------------------------------------------------------------------- |
+| **`--groupBy`**       | `-g`  | `string`  | `rule`          | Group by "rule", "file", or "file-rule". Choices: `rule`, `file`, `file-rule`.                           |
+| **`--sortBy`**        | `-s`  | `string`  | `time`          | Sort by "time" or "violations". Choices: `time`, `violations`.                                           |
+| **`--sortDirection`** | `-d`  | `string`  | `desc`          | Sort direction "asc" or "desc". Choices: `asc`, `desc`.                                                  |
+| **`--take`**          | `-t`  | `array`   |                 | The number of entries to display. For `file-rule` group, two values can be provided for files and rules. |
+| **`--outPath`**       |       | `string`  |                 | Path to the output file. Defaults to the input file name with a .md extension.                           |
+| **`--interactive`**   |       | `boolean` | `true` (if TTY) | Interactive mode to dynamically explore the performance data.                                            |
 
 **Examples:**
 
