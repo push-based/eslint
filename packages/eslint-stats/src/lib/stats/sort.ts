@@ -1,71 +1,25 @@
-import type { ProcessedTimeEntry } from '../models/eslint-stats.schema';
+import { ascending, descending } from 'd3-array';
+import { FileEntry, RuleEntry } from './extract';
 
-export type SortKey =
-  | 'time'
-  | 'errors'
-  | 'warnings'
-  | 'fixableErrors'
-  | 'fixableWarnings'
-  | 'fixableSuggestionCount'
-  | 'manuallyFixable';
+export type SortableField = 'time' | 'errors' | 'warnings' | 'identifier';
 
-export type SortOptions = {
-  key?: 'time' | 'violations'; // legacy for backward compatibility
-  keys?: SortKey[];
-  order?: 'asc' | 'desc';
+export type SortableData = RuleEntry | FileEntry;
+
+const accessors: Record<SortableField, (d: SortableData) => number | string> = {
+  time: (d) => d.time,
+  errors: (d) => d.errors,
+  warnings: (d) => d.warnings,
+  identifier: (d) => d.identifier,
 };
 
-export function sortRules(
-  entries: ProcessedTimeEntry[],
-  options: SortOptions = {}
-): ProcessedTimeEntry[] {
-  const { order = 'desc' } = options;
+export function sortEntries(
+  entries: SortableData[],
+  sortBy: SortableField,
+  sortDirection: 'asc' | 'desc'
+): SortableData[] {
+  const comparator = sortDirection === 'asc' ? ascending : descending;
 
-  const getSortKeys = (): SortKey[] => {
-    if (options.keys) {
-      return options.keys;
-    }
-    if (options.key === 'violations') {
-      return ['errors', 'warnings'];
-    }
-    return ['time']; // Default
-  };
-
-  const sortKeys = getSortKeys();
-
-  // Sort the current level of entries
-  entries.sort((a, b) => {
-    for (const key of sortKeys) {
-      let diff = 0;
-      switch (key) {
-        case 'time':
-          diff = (b.timeMs || 0) - (a.timeMs || 0);
-          break;
-        case 'errors':
-          diff = (b.errorCount || 0) - (a.errorCount || 0);
-          break;
-        case 'warnings':
-          diff = (b.warningCount || 0) - (a.warningCount || 0);
-          break;
-        case 'manuallyFixable':
-          diff = (b.manuallyFixable ? 1 : 0) - (a.manuallyFixable ? 1 : 0);
-          break;
-      }
-      if (diff !== 0) {
-        return order === 'desc' ? diff : -diff;
-      }
-    }
-
-    // Secondary sort by identifier (e.g., rule name or file path)
-    return a.identifier.localeCompare(b.identifier);
-  });
-
-  // Recursively sort children
-  for (const entry of entries) {
-    if (entry.children && entry.children.length > 0) {
-      entry.children = sortRules(entry.children, options);
-    }
-  }
-
-  return entries;
+  return [...entries].sort((a, b) =>
+    comparator(accessors[sortBy](a), accessors[sortBy](b))
+  );
 }

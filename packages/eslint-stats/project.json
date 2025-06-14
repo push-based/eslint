@@ -5,5 +5,15 @@
   "projectType": "library",
   "tags": [],
   "// targets": "to see all targets run: nx show project eslint-stats --web",
-  "targets": {}
+  "targets": {
+    "demo": {
+      "dependsOn": ["build"],
+      "command": "node {projectRoot}/dist/eslint-stats.cjs",
+      "options": {
+        "args": [
+          "./eslint.stats.json"
+        ]
+      }
+    }
+  }
 }

@@ -9,13 +9,14 @@ import {
   groupByOptions,
   SortByOption,
   sortByOptions,
-} from './interactive';
+} from './command-state';
 
 export interface AnalyseArgs {
   interactive?: boolean;
   file: string;
   groupBy: GroupByOption;
   sortBy: SortByOption;
+  sortDirection: 'asc' | 'desc';
   show: string[];
   take?: (string | number)[];
   outPath?: string;
@@ -32,7 +33,7 @@ export const analyseCommand: CommandModule<object, AnalyseArgs> = {
       })
       .demandOption('file')
       .group(
-        ['groupBy', 'sortBy', 'show', 'take', 'outPath', 'help'],
+        ['groupBy', 'sortBy', 'sortDirection', 'take', 'outPath', 'help'],
         'Formatting Options:'
       )
       .option('groupBy', {
@@ -47,12 +48,11 @@ export const analyseCommand: CommandModule<object, AnalyseArgs> = {
         default: 'time',
         choices: sortByOptions,
       })
-      .option('show', {
-        description:
-          'Columns to show. Options: "time", "relative", "violations".',
-        type: 'array',
-        choices: ['time', 'relative', 'violations'],
-        default: ['time', 'relative', 'violations'],
+      .option('sortDirection', {
+        alias: 'd',
+        description: 'Sort direction "asc" or "desc"',
+        default: 'desc',
+        choices: ['asc', 'desc'],
       })
       .option('take', {
         alias: 't',
