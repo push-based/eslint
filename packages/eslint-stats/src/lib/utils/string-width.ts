@@ -38,9 +38,10 @@ function getEmojiWidth(char: string): number {
     case '⚠️': // warning (might include variation selector)
     case '🔧': // wrench
       return 2;
-    default:
+    default: {
       const code = char.codePointAt(0) || 0;
       return isWideCharacter(code) ? 2 : 1;
+    }
   }
 }
 

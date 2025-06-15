@@ -17,7 +17,8 @@ export function createProcessedTotalsTracker() {
       files.push(fileResult);
     },
 
-    trackRule(ruleResult: RuleStatsNode): void {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    trackRule(_ruleResult: RuleStatsNode): void {
       // Rules are already added to their parent file's children
       // No additional tracking needed here
     },
@@ -40,13 +41,18 @@ export function createProcessEslintResultVisitor(): EslintResultVisitor {
       results.push(fileResult);
     },
 
-    visitMessage(message: Linter.LintMessage, fileResult: FileStatsNode): void {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    visitMessage(
+      _message: Linter.LintMessage,
+      _fileResult: FileStatsNode
+    ): void {
       return;
     },
 
-    visitRule(ruleData: RuleStatsNode, fileData: FileStatsNode): void {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    visitRule(_ruleData: RuleStatsNode, _fileData: FileStatsNode): void {
       // Rules are now automatically pushed to fileData.children in walkEslintResult
-      totalsTracker.trackRule(ruleData);
+      totalsTracker.trackRule(_ruleData);
     },
 
     getResults(): RootStatsNode {

@@ -48,7 +48,8 @@ export async function handler(argv: MeasureArgs): Promise<void> {
     if (result.code !== 0) {
       process.exit(result.code || 1);
     }
-  } catch (error) {
+  } catch (_error) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     // error is logged by runEslintWithStats
     process.exit(1);
   }

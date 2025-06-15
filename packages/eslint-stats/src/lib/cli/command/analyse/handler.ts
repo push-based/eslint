@@ -56,10 +56,11 @@ function mapSortByOptionToField(
       return 'totalTime';
     case 'violations':
       return 'errorCount';
-    default:
+    default: {
       // This should never happen due to exhaustive checking
       const _exhaustive: never = option;
       throw new Error(`Unhandled sort option: ${_exhaustive}`);
+    }
   }
 }
 

@@ -10,6 +10,7 @@ type Opts = {
 };
 
 // regex that matches either an ANSI escape or a single code unit
+// eslint-disable-next-line no-control-regex
 const ANSI_OR_CHAR = /\u001b\[[0-9;]*m|[\s\S]/g;
 
 /** truncate a raw ANSI-string to at most maxWidth visible chars, preserving escapes */
@@ -57,8 +58,8 @@ function computeWidths(
 ): number[] {
   const cols = grid[0].length;
   return Array.from({ length: cols }, (_, c) => {
-    if (forced?.[c] != null) return forced[c]!;
-    const nat = max(grid.map((row) => getStringWidth(row[c])))!;
+    if (forced?.[c] != null) return forced[c] ?? 0;
+    const nat = max(grid.map((row) => getStringWidth(row[c]))) ?? 0;
     return maxWidth != null ? Math.min(nat, maxWidth) : nat;
   });
 }

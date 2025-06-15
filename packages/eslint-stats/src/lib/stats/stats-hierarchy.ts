@@ -24,6 +24,19 @@ export interface RuleStatsEntry extends DisplayStatsWithTime {
 }
 
 export type NodeStats = FileStatsEntry | RuleStatsEntry;
+export type RootData = {
+  type: 'root';
+  identifier: string;
+  totalTime: number;
+  errorCount: number;
+  warningCount: number;
+  pct: number;
+  rulesTime: number;
+  fixTime: number;
+  parseTime: number;
+  children: FileStatsEntry[];
+};
+export type HierarchyNodeData = NodeStats | RootData;
 
 export type FileRow = DisplayStatsWithTime & {
   type: 'file';
@@ -129,7 +142,8 @@ export function toFlatEntry(node: HierarchyNode<NodeStats>): StatsRow {
 export function buildHierarchy(
   tree: FileStatsEntry[],
   grandTotal: number
-): HierarchyNode<NodeStats> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): HierarchyNode<any> {
   const rootData = {
     type: 'root' as const,
     identifier: 'root',
@@ -143,11 +157,16 @@ export function buildHierarchy(
     children: tree,
   };
 
-  return hierarchy<any>(rootData, (d: any) => d.children)
-    .sum((d: any) => d.totalTime || 0)
-    .sort((a, b) => b.value! - a.value!);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (
+    hierarchy<any>(rootData, (d: any) => d.children)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .sum((d: any) => d.totalTime || 0)
+      .sort((a, b) => (b.value || 0) - (a.value || 0))
+  );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function flattenNodeStats(root: HierarchyNode<any>): StatsRow[] {
   return root
     .descendants()
