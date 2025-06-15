@@ -1,4 +1,4 @@
-import { renderTable } from '../utils/ascii-table';
+import { renderTable } from '../utils/markdown-table';
 import { max } from 'd3-array';
 import {
   formatTimeColored,

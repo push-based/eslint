@@ -65,7 +65,7 @@ function computeWidths(
 }
 
 /**
- * Render a UTF-8 + ANSI-aware table for the terminal.
+ * Render a markdown table for the terminal.
  */
 export function renderTable(
   rows: string[][],
@@ -76,8 +76,11 @@ export function renderTable(
   const grid = [headers, ...rows];
   const widths = computeWidths(grid, forced, maxWidth);
   const sep = borderColor(' | ');
+  const pipeBorder = borderColor('|');
 
   const makeLine = (row: string[], isHeader: boolean) =>
+    pipeBorder +
+    ' ' +
     row
       .map((cell, ci) => {
         let txt = cell;
@@ -85,10 +88,14 @@ export function renderTable(
         const dir: 'left' | 'right' = isHeader || ci === 0 ? 'left' : 'right';
         return alignCell(txt, widths[ci], dir);
       })
-      .join(sep);
+      .join(sep) +
+    ' ' +
+    pipeBorder;
 
   const headerLine = makeLine(headers, true);
-  const separator = borderColor(widths.map((w) => '-'.repeat(w)).join('-+-'));
+  const separator = borderColor(
+    '|' + widths.map((w) => '-'.repeat(w + 2)).join('|') + '|'
+  );
   const dataLines = rows.map((r) => makeLine(r, false));
 
   return [headerLine, separator, ...dataLines].join('\n');

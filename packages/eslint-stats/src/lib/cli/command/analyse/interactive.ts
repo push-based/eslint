@@ -37,17 +37,10 @@ import theme from '../../../stats/theme';
 export function handleGlobalActions(
   key: string,
   state: InteractiveCommandState,
-  sceneContent: string[],
-  processedStats?: RootStatsNode
+  processedStats: RootStatsNode
 ) {
   if (state.lastAction === 'write' && state.outputPath) {
-    handleWriteAction(
-      state,
-      sceneContent.join('\n'),
-      state.outputPath,
-      state.file,
-      processedStats
-    );
+    handleWriteAction(state, state.outputPath, state.file, processedStats);
   }
   switch (key) {
     case CTRL_C:
@@ -204,10 +197,9 @@ function mapGroupByOptionToViewName(
 
 export function handleWriteAction(
   state: InteractiveCommandState,
-  tableStr: string,
   outputPath: string,
   analyzedFilePath: string,
-  processedStats?: RootStatsNode
+  processedStats: RootStatsNode
 ): InteractiveCommandState {
   const outputName = path.basename(outputPath);
 
@@ -218,14 +210,14 @@ export function handleWriteAction(
     ', '
   )}**`;
 
-  // Add total stats if processedStats is provided
-  const totalStatsLine = processedStats
-    ? createTotalStatsLine(processedStats)
-    : '';
-  const statsSection = totalStatsLine ? `\n\n${totalStatsLine}\n` : '\n\n';
+  const tableOptions = convertInteractiveStateToViewOptions(state);
+  const tableContent = renderInteractiveEsLintStatsView(
+    tableOptions,
+    processedStats
+  );
 
-  const newContent = `${stateDescription}${statsSection}${ansis.strip(
-    tableStr
+  const newContent = `${ansis.strip(stateDescription)}\n\n${ansis.strip(
+    tableContent.join('\n')
   )}`;
   let contentToAppend: string;
 
@@ -233,7 +225,11 @@ export function handleWriteAction(
     contentToAppend = `\n\n---\n\n${newContent}`;
   } else {
     const analyzedFileName = path.basename(analyzedFilePath);
-    contentToAppend = `# Eslint Stats Analysis\n\nFile: **${analyzedFileName}**\n\n---\n\n${newContent}`;
+    const totalStatsLine = processedStats
+      ? ansis.strip(createTotalStatsLine(processedStats))
+      : '';
+    const fileHeader = `# Eslint Stats Analysis\n\nFile: **${analyzedFileName}**\n\n${totalStatsLine}\n\n---\n\n${newContent}`;
+    contentToAppend = fileHeader;
   }
 
   fs.appendFileSync(outputPath, contentToAppend);
@@ -378,7 +374,7 @@ export function startInteractiveSession(
 
       const sceneContent = renderScreen(state);
 
-      handleGlobalActions(key, state, sceneContent, processedStats);
+      handleGlobalActions(key, state, processedStats);
 
       reprintSection(sceneContent);
     },
