@@ -16,14 +16,22 @@ import { ESLint } from 'eslint';
 
 function initInteractiveState(argv: AnalyseArgs): InteractiveCommandState {
   const take = argv.take?.map((n: number | string) => Number(n)) ?? [10];
+  const isFileRuleView = argv.groupBy === 'file-rule';
+
+  // Ensure we have proper defaults for file-rule view
+  const normalizedTake =
+    isFileRuleView && take.length === 1
+      ? [take[0], take[0]] // Use same limit for both files and rules if only one provided
+      : take;
 
   return {
     groupByIndex: groupByOptions.indexOf(argv.groupBy),
     sortByIndex: sortByOptions.indexOf(argv.sortBy),
     sortOrder: argv.sortDirection,
-    take: take,
+    take: normalizedTake,
     interactive: argv.interactive ?? false,
     file: argv.file,
+    activeLayer: isFileRuleView ? 'file' : undefined, // Initialize to 'file' for file-rule view
   };
 }
 

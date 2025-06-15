@@ -37,6 +37,12 @@ export const analyseCommand: CommandModule<object, AnalyseArgs> = {
         default: sortDirection.desc,
         choices: Object.values(sortDirection),
       })
+      .option('take', {
+        describe:
+          'The number of entries to display. For file-rule group, two values can be provided for files and rules.',
+        alias: 't',
+        type: 'array',
+      })
       .option('interactive', {
         describe: 'Control the table over terminal input',
         type: 'boolean',

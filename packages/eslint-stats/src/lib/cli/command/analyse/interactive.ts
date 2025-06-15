@@ -58,6 +58,25 @@ export function updateStateOnKeyPress(
   state: InteractiveCommandState
 ): InteractiveCommandState {
   const newState = { ...state, notification: undefined };
+  const isFileRuleView = groupByOptions[state.groupByIndex] === 'file-rule';
+
+  // Handle layer switching for file-rule view
+  if (isFileRuleView && (key === 'f' || key === 'F')) {
+    return {
+      ...newState,
+      activeLayer: 'file',
+      lastAction: 'layer',
+    };
+  }
+
+  if (isFileRuleView && (key === 'r' || key === 'R')) {
+    return {
+      ...newState,
+      activeLayer: 'rule',
+      lastAction: 'layer',
+    };
+  }
+
   switch (key) {
     case ARROW_RIGHT:
       return {
@@ -84,6 +103,8 @@ export function updateStateOnKeyPress(
         ...newState,
         groupByIndex: (state.groupByIndex + 1) % groupByOptions.length,
         lastAction: 'group',
+        // Reset active layer when switching views
+        activeLayer: undefined,
       };
     case SHIFT_TAB:
       return {
@@ -92,19 +113,42 @@ export function updateStateOnKeyPress(
           (state.groupByIndex - 1 + groupByOptions.length) %
           groupByOptions.length,
         lastAction: 'group',
+        // Reset active layer when switching views
+        activeLayer: undefined,
       };
     case PLUS:
-      return {
-        ...newState,
-        take: state.take.map((n) => n + 1),
-        lastAction: 'rows',
-      };
     case MINUS:
-      return {
-        ...newState,
-        take: state.take.map((n) => Math.max(1, n - 1)),
-        lastAction: 'rows',
-      };
+      if (isFileRuleView) {
+        // Handle file-rule view with layer-specific control
+        const take = [...state.take];
+        const activeLayer = state.activeLayer || 'file'; // Default to file layer
+        const layerIndex = activeLayer === 'file' ? 0 : 1;
+
+        // Ensure we have at least 2 elements in take array
+        if (take.length < 2) {
+          take.push(take[0] || 10); // Use first value or default to 10
+        }
+
+        const currentValue = take[layerIndex] || 10;
+        take[layerIndex] =
+          key === PLUS ? currentValue + 1 : Math.max(1, currentValue - 1);
+
+        return {
+          ...newState,
+          take,
+          lastAction: 'rows',
+          activeLayer, // Ensure activeLayer is set
+        };
+      } else {
+        // Original behavior for non-file-rule views
+        return {
+          ...newState,
+          take: state.take.map((n) =>
+            key === PLUS ? n + 1 : Math.max(1, n - 1)
+          ),
+          lastAction: 'rows',
+        };
+      }
     case ENTER:
       if (state.outputPath) {
         return {
@@ -196,8 +240,10 @@ export function convertInteractiveStateToViewOptions(
   // Convert take to a tuple format
   const take: [number, number?] =
     state.take && state.take.length > 0
-      ? [state.take[0], state.take[0]] // Use the same limit for both files and rules
-      : [10];
+      ? state.take.length > 1
+        ? [state.take[0], state.take[1]] // Use separate limits for files and rules
+        : [state.take[0], state.take[0]] // Use same limit for both if only one provided
+      : [10, 10]; // Default to 10 for both
 
   return {
     sortBy,

@@ -106,37 +106,58 @@ const VIEWS: Record<string, ViewConfig> = {
   },
 };
 
-// Pure table renderer
-function renderTableRows(
+// Helper function to limit entries
+function limitEntries(
+  entries: StatsRow[],
+  take: [number, number?]
+): StatsRow[] {
+  const [limit] = take;
+  return limit > 0 ? entries.slice(0, limit) : entries;
+}
+
+// Pure table renderer for pre-formatted data - no sorting, no limiting
+function renderStatsTable(
+  entries: StatsRow[],
+  headerLabel: string,
+  extraTimeCell?: CellExtras<StatsRow>,
+  headerOptions?: TableHeaderOptions
+): string[] {
+  // Compute maxima
+  const maxes: Maxima = {
+    totalTime: max(entries, (d) => d.totalTime) ?? 1,
+    pct: max(entries, (d) => d.pct) ?? 1,
+    err: max(entries, (d) => d.errorCount) ?? 1,
+    warn: max(entries, (d) => d.warningCount) ?? 1,
+  };
+
+  // Build rows using formatRow helper
+  const rows = entries.map((e) =>
+    formatRow(e, maxes, headerLabel, extraTimeCell)
+  );
+
+  return [
+    renderTable(rows, {
+      headers: getTableHeaders(headerLabel, headerOptions),
+    }),
+  ];
+}
+
+// Convenience function for sorted and limited data
+function renderSortedTable(
   entries: StatsRow[],
   options: TableViewOptions,
   headerLabel: string,
   extraTimeCell?: CellExtras<StatsRow>
 ): string[] {
   const { sortBy = 'totalTime', sortDirection = 'desc', take = [10] } = options;
+
   const sorted = sortEntries(entries, sortBy, sortDirection);
+  const limited = limitEntries(sorted, take);
 
-  // Compute maxima
-  const maxes: Maxima = {
-    totalTime: max(sorted, (d) => d.totalTime) ?? 1,
-    pct: max(sorted, (d) => d.pct) ?? 1,
-    err: max(sorted, (d) => d.errorCount) ?? 1,
-    warn: max(sorted, (d) => d.warningCount) ?? 1,
-  };
-
-  // Apply top-level take limit
-  const limited = take[0] > 0 ? sorted.slice(0, take[0]) : sorted;
-
-  // Build rows using formatRow helper
-  const rows = limited.map((e) =>
-    formatRow(e, maxes, headerLabel, extraTimeCell)
-  );
-
-  return [
-    renderTable(rows, {
-      headers: getTableHeaders(headerLabel, { sortBy, sortDirection }),
-    }),
-  ];
+  return renderStatsTable(limited, headerLabel, extraTimeCell, {
+    sortBy,
+    sortDirection,
+  });
 }
 
 export function renderInteractiveEsLintStatsView(
@@ -173,18 +194,27 @@ export function renderInteractiveEsLintStatsView(
     const ruleRows = items.filter((r): r is RuleRow => r.depth === 1);
     const rulesByFile = group(ruleRows, (r: RuleRow) => r.parent);
 
+    // Sort files by the specified criteria
+    const sortedFiles = sortEntries(files, sortBy, sortDirection);
+
     // Handle hierarchical take limits: [fileLimit, ruleLimit]
     const [fileLimit, ruleLimit = fileLimit] = take;
-    const limitedFiles = fileLimit > 0 ? files.slice(0, fileLimit) : files;
+    const limitedFiles = limitEntries(sortedFiles, [fileLimit]);
 
     items = limitedFiles.flatMap((file) => {
       const kids = rulesByFile.get(file.identifier) ?? [];
-      const limitedKids = ruleLimit > 0 ? kids.slice(0, ruleLimit) : kids;
+      // Sort rules within each file by the specified criteria
+      const sortedKids = sortEntries(kids, sortBy, sortDirection);
+      const limitedKids = limitEntries(sortedKids, [ruleLimit]);
       return [file, ...limitedKids];
     });
+
+    // Use renderStatsTable for pre-sorted and pre-limited hierarchical data
+    return renderStatsTable(items, cfg.label, cfg.extra);
   }
 
-  return renderTableRows(
+  // Use renderSortedTable for non-hierarchical data that needs sorting
+  return renderSortedTable(
     items,
     { sortBy, sortDirection, take },
     cfg.label,
