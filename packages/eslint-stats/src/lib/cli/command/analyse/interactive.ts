@@ -298,11 +298,15 @@ export function startInteractiveSession(
 }
 
 export function reprintSection(newTexts: string[]): void {
-  // clear screen
-  process.stdout.write('\u001B[2J');
-  // move cursor to top left
-  process.stdout.write('\u001B[0;0H');
+  if (process.stdout.isTTY) {
+    process.stdout.write('\u001Bc'); // Reset terminal
+    process.stdout.write('\u001B[2J'); // Clear screen
+    process.stdout.write('\u001B[H'); // Move to home position
+  } else {
+    // Fallback for non-TTY environments
+    console.clear();
+  }
 
   const output = newTexts.join('\n');
-  process.stdout.write('\u001B[2J\u001B[0;0H' + output + '\u001B[0;0H');
+  process.stdout.write(output);
 }
