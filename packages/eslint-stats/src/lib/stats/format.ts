@@ -2,6 +2,7 @@ import path from 'path';
 import theme from './theme';
 import { StatsRow } from './stats-hierarchy';
 import { asciiSparkline } from '../utils/ascii-sparkline';
+import ansis from 'ansis';
 
 /**
  * Formats a file path with colored directory and filename
@@ -65,10 +66,10 @@ export function sparklineForFile(e: StatsRow): string | undefined {
     min: 0,
     max: Math.round(totalTime * 1000),
     colors: [
-      (s: string) => theme.text.file(s), // Parse time (file processing) - use file color
-      (s: string) => theme.text.rule(s), // Rules time (rule execution) - use rule color
-      (s: string) => theme.text.dim(s), // Fix time (applying fixes) - use dim color (no direct error color in theme.text)
-      (s: string) => theme.text.dim(s), // Other time (misc operations) - use dim color
+      (s: string) => theme.text.dim(theme.text.file(s)), // Parse time - dimmed file processing (green)
+      (s: string) => theme.text.dim(theme.text.rule(s)), // Rules time - dimmed rule execution (cyan)
+      (s: string) => theme.text.dim(ansis.red(s)), // Fix time - dimmed error fixing (red)
+      (s: string) => theme.text.dim(s), // Other time - already dim
     ],
   });
 

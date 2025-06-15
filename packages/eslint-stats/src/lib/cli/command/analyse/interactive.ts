@@ -30,18 +30,23 @@ import {
 } from './command-state';
 import { createInteractiveOptions } from './utils';
 import { processEslintResults } from '../../../parse';
+import { computeTotals } from '../../../parse/eslint-result-visitor';
+import { RootStatsNode } from '../../../parse/eslint-result-visitor';
+import theme from '../../../stats/theme';
 
 export function handleGlobalActions(
   key: string,
   state: InteractiveCommandState,
-  sceneContent: string[]
+  sceneContent: string[],
+  processedStats?: RootStatsNode
 ) {
   if (state.lastAction === 'write' && state.outputPath) {
     handleWriteAction(
       state,
       sceneContent.join('\n'),
       state.outputPath,
-      state.file
+      state.file,
+      processedStats
     );
   }
   switch (key) {
@@ -199,7 +204,8 @@ export function handleWriteAction(
   state: InteractiveCommandState,
   tableStr: string,
   outputPath: string,
-  analyzedFilePath: string
+  analyzedFilePath: string,
+  processedStats?: RootStatsNode
 ): InteractiveCommandState {
   const outputName = path.basename(outputPath);
 
@@ -210,7 +216,15 @@ export function handleWriteAction(
     ', '
   )}**`;
 
-  const newContent = `${stateDescription}\n\n${ansis.strip(tableStr)}`;
+  // Add total stats if processedStats is provided
+  const totalStatsLine = processedStats
+    ? createTotalStatsLine(processedStats)
+    : '';
+  const statsSection = totalStatsLine ? `\n\n${totalStatsLine}\n` : '\n\n';
+
+  const newContent = `${stateDescription}${statsSection}${ansis.strip(
+    tableStr
+  )}`;
   let contentToAppend: string;
 
   if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 0) {
@@ -266,6 +280,78 @@ function setupStdin(onData: (key: string) => void, onExit: () => void) {
   });
 }
 
+function createTotalStatsLine(processedStats: RootStatsNode): string {
+  const totals = computeTotals(processedStats.children);
+
+  const formatTime = (time: number) => {
+    if (time >= 1000) return `${(time / 1000).toFixed(2)}s`;
+    return `${time.toFixed(2)}ms`;
+  };
+
+  const formatCount = (
+    count: number,
+    isError = false,
+    isWarning = false,
+    isFixable = false
+  ) => {
+    if (count === 0) return theme.text.dim(count.toString());
+    if (isError) return ansis.bold.red(count.toString());
+    if (isWarning) return ansis.bold.yellow(count.toString());
+    if (isFixable) return ansis.bold(theme.text.file(count.toString())); // Use bold file color (green) for fixable
+    return count.toString();
+  };
+
+  // Calculate other time (total - parse - rules - fix)
+  const otherTime = Math.max(
+    0,
+    totals.totalTime - totals.parseTime - totals.rulesTime - totals.fixTime
+  );
+
+  // Group stats logically with colors and spacing - match table theme
+  const fileStats = `${theme.icons.file} ${ansis.bold(
+    theme.text.file(totals.fileCount)
+  )} files`;
+  const ruleStats = `${theme.icons.rule} ${ansis.bold(
+    theme.text.rule(totals.ruleCount)
+  )} rules`;
+  const timeStats = `${theme.icons.time} ${ansis.bold.blue(
+    formatTime(totals.totalTime)
+  )} ${theme.text.dim(`(parse: `)}${theme.text.file(
+    formatTime(totals.parseTime)
+  )}${theme.text.dim(`, rules: `)}${theme.text.rule(
+    formatTime(totals.rulesTime)
+  )}${theme.text.dim(`, fix: `)}${ansis.red(
+    formatTime(totals.fixTime)
+  )}${theme.text.dim(`, other: `)}${theme.text.dim(
+    formatTime(otherTime)
+  )}${theme.text.dim(`)`)}`;
+  const issueStats = `${theme.icons.error} ${formatCount(
+    totals.errorCount,
+    true
+  )} errors • ${theme.icons.warning} ${formatCount(
+    totals.warningCount,
+    false,
+    true
+  )} warnings`;
+  const fixStats =
+    totals.fixableErrorCount > 0 || totals.fixableWarningCount > 0
+      ? ` • ${theme.icons.fixable} ${formatCount(
+          totals.fixableErrorCount + totals.fixableWarningCount,
+          false,
+          false,
+          true
+        )} fixable`
+      : '';
+
+  // Split into two lines
+  const firstLine =
+    ansis.bold(`${theme.icons.total} Total: `) +
+    [fileStats, ruleStats, timeStats].join(' • ');
+  const secondLine = '         ' + issueStats + fixStats; // Indent to align with "Total: "
+
+  return firstLine + '\n' + secondLine;
+}
+
 export function startInteractiveSession(
   detailedStats: ESLint.LintResult[],
   state: InteractiveCommandState
@@ -274,8 +360,11 @@ export function startInteractiveSession(
 
   const renderScreen = (state: InteractiveCommandState) => {
     const tableOptions = convertInteractiveStateToViewOptions(state);
+    const totalStatsLine = createTotalStatsLine(processedStats);
     return [
       createInteractiveOptions(state),
+      '',
+      totalStatsLine,
       '',
       ...renderInteractiveEsLintStatsView(tableOptions, processedStats),
     ];
@@ -287,7 +376,7 @@ export function startInteractiveSession(
 
       const sceneContent = renderScreen(state);
 
-      handleGlobalActions(key, state, sceneContent);
+      handleGlobalActions(key, state, sceneContent, processedStats);
 
       reprintSection(sceneContent);
     },

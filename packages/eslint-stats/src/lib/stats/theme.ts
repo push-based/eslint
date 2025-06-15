@@ -67,6 +67,17 @@ const text = {
   border: ansis.dim.gray,
 };
 
+// Icons used throughout the application
+const icons = {
+  total: '📊',
+  file: '📁',
+  rule: '⚙️',
+  time: '⚡',
+  error: '🚨',
+  warning: '⚠️',
+  fixable: '🔧',
+} as const;
+
 // Metric formatters configuration
 const metricConfig = {
   timeFmt: {
@@ -118,6 +129,7 @@ const fmt = Object.fromEntries(
 
 export const theme = {
   text,
+  icons,
   fmt,
   scales,
 } as const;

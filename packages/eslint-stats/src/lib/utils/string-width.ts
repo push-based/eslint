@@ -26,6 +26,25 @@ export function isWideCharacter(code: number): boolean {
 }
 
 /**
+ * Get the visual width of specific emojis we use in headers
+ * Some terminals may render these differently, so we provide explicit widths
+ */
+function getEmojiWidth(char: string): number {
+  switch (char) {
+    case '📁': // folder
+    case '⚙️': // gear (might include variation selector)
+    case '⚡': // lightning
+    case '🚨': // rotating light
+    case '⚠️': // warning (might include variation selector)
+    case '🔧': // wrench
+      return 2;
+    default:
+      const code = char.codePointAt(0) || 0;
+      return isWideCharacter(code) ? 2 : 1;
+  }
+}
+
+/**
  * Get the visible width of a string (ANSI stripped, accounting for wide characters)
  * @param str string to measure
  * @returns visible width in terminal columns
@@ -35,8 +54,7 @@ export function getStringWidth(str: string): number {
   let width = 0;
 
   for (const char of clean) {
-    const code = char.codePointAt(0) || 0;
-    width += isWideCharacter(code) ? 2 : 1;
+    width += getEmojiWidth(char);
   }
 
   return width;

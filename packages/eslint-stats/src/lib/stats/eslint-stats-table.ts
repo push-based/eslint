@@ -21,6 +21,7 @@ import { RootStatsNode } from '../parse';
 import { group } from 'd3-array';
 import { sparklineForFile } from './format';
 import { getStringWidth } from '../utils/string-width';
+import theme from './theme';
 
 function formatIdentifier(e: StatsRow, header: string): string {
   const base =
@@ -118,7 +119,7 @@ const VIEWS: Record<string, ViewConfig> = {
   },
   'file-rule': {
     filter: () => true,
-    label: 'File/Rule',
+    label: `File → ${theme.icons.rule} Rule`,
     interleave: true,
     extra: sparklineForFile,
   },
@@ -272,11 +273,23 @@ export function getTableHeaders(
     return showArrow ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '';
   };
 
+  // Simplified approach: use emojis with consistent spacing
+  const getFirstColumnHeader = () => {
+    if (first === 'File') {
+      return `${theme.icons.file} ${first}${arrow('identifier')}`;
+    } else if (first === 'Rule') {
+      return `${theme.icons.rule}  ${first}${arrow('identifier')}`;
+    } else if (first === `File → ${theme.icons.rule} Rule`) {
+      return `${theme.icons.file} ${first}${arrow('identifier')}`;
+    }
+    return `${first}${arrow('identifier')}`;
+  };
+
   return [
-    `${first}${arrow('identifier')}`,
-    `Time${arrow('totalTime')}`,
+    getFirstColumnHeader(),
+    `${theme.icons.time} Time${arrow('totalTime')}`,
     `%${arrow('totalTime')}`, // Percentage follows time sorting
-    `🚨 Errors${arrow('errorCount')}`,
-    `⚠️ Warnings${arrow('warningCount')}`,
+    `${theme.icons.error} Errors${arrow('errorCount')}`,
+    `${theme.icons.warning}  Warnings${arrow('warningCount')}`,
   ];
 }

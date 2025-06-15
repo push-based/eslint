@@ -14,6 +14,12 @@ import {
 import { readFileSync } from 'fs';
 import { ESLint } from 'eslint';
 import * as path from 'path';
+import {
+  computeTotals,
+  RootStatsNode,
+} from '../../../parse/eslint-result-visitor';
+import ansis from 'ansis';
+import theme from '../../../stats/theme';
 
 function initInteractiveState(argv: AnalyseArgs): InteractiveCommandState {
   const take = argv.take?.map((n: number | string) => Number(n)) ?? [10];
@@ -82,6 +88,78 @@ function convertInteractiveStateToEslintStatsViewState(
   };
 }
 
+function createTotalStatsLine(processedStats: RootStatsNode): string {
+  const totals = computeTotals(processedStats.children);
+
+  const formatTime = (time: number) => {
+    if (time >= 1000) return `${(time / 1000).toFixed(2)}s`;
+    return `${time.toFixed(2)}ms`;
+  };
+
+  const formatCount = (
+    count: number,
+    isError = false,
+    isWarning = false,
+    isFixable = false
+  ) => {
+    if (count === 0) return theme.text.dim(count.toString());
+    if (isError) return ansis.bold.red(count.toString());
+    if (isWarning) return ansis.bold.yellow(count.toString());
+    if (isFixable) return ansis.bold(theme.text.file(count.toString())); // Use bold file color (green) for fixable
+    return count.toString();
+  };
+
+  // Calculate other time (total - parse - rules - fix)
+  const otherTime = Math.max(
+    0,
+    totals.totalTime - totals.parseTime - totals.rulesTime - totals.fixTime
+  );
+
+  // Group stats logically with colors and spacing - match table theme
+  const fileStats = `${theme.icons.file} ${ansis.bold(
+    theme.text.file(totals.fileCount)
+  )} files`;
+  const ruleStats = `${theme.icons.rule} ${ansis.bold(
+    theme.text.rule(totals.ruleCount)
+  )} rules`;
+  const timeStats = `${theme.icons.time} ${ansis.bold.blue(
+    formatTime(totals.totalTime)
+  )} ${theme.text.dim(`(parse: `)}${theme.text.file(
+    formatTime(totals.parseTime)
+  )}${theme.text.dim(`, rules: `)}${theme.text.rule(
+    formatTime(totals.rulesTime)
+  )}${theme.text.dim(`, fix: `)}${ansis.red(
+    formatTime(totals.fixTime)
+  )}${theme.text.dim(`, other: `)}${theme.text.dim(
+    formatTime(otherTime)
+  )}${theme.text.dim(`)`)}`;
+  const issueStats = `${theme.icons.error} ${formatCount(
+    totals.errorCount,
+    true
+  )} errors • ${theme.icons.warning} ${formatCount(
+    totals.warningCount,
+    false,
+    true
+  )} warnings`;
+  const fixStats =
+    totals.fixableErrorCount > 0 || totals.fixableWarningCount > 0
+      ? ` • ${theme.icons.fixable} ${formatCount(
+          totals.fixableErrorCount + totals.fixableWarningCount,
+          false,
+          false,
+          true
+        )} fixable`
+      : '';
+
+  // Split into two lines
+  const firstLine =
+    ansis.bold(`${theme.icons.total} Total: `) +
+    [fileStats, ruleStats, timeStats].join(' • ');
+  const secondLine = '         ' + issueStats + fixStats; // Indent to align with "Total: "
+
+  return firstLine + '\n' + secondLine;
+}
+
 export async function analyseHandler(argv: AnalyseArgs): Promise<void> {
   try {
     // Ensure take is always a number array
@@ -106,6 +184,11 @@ export async function analyseHandler(argv: AnalyseArgs): Promise<void> {
         tableOptions,
         detailedStats
       );
+
+      // Add total stats line before the table
+      const totalStatsLine = createTotalStatsLine(detailedStats);
+      console.log(totalStatsLine);
+      console.log('');
       console.log(result.join('\n'));
       return;
     }
