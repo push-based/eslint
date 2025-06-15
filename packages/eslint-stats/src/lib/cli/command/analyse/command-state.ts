@@ -5,7 +5,7 @@ export type GroupByOption = (typeof groupByOptions)[number];
 export type SortByOption = (typeof sortByOptions)[number];
 
 type SortOrder = 'asc' | 'desc';
-type Action = 'group' | 'sort' | 'order' | 'rows' | 'write';
+type Action = 'group' | 'sort' | 'order' | 'rows' | 'write' | 'layer';
 
 export interface InteractiveCommandState {
   groupByIndex: number;
@@ -17,6 +17,7 @@ export interface InteractiveCommandState {
   outputPath?: string;
   file: string;
   interactive: boolean;
+  activeLayer?: 'file' | 'rule';
 }
 
 export const maxGroupByLength = Math.max(

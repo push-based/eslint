@@ -1,5 +1,5 @@
 import * as ansis from 'ansis';
-import { executeProcess, type ProcessResult } from './execute-process';
+import { executeProcess, type ProcessResult } from '../utils/execute-process';
 import * as process from 'node:process';
 import { join } from 'node:path';
 

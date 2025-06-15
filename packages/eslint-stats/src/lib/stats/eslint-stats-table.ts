@@ -1,6 +1,5 @@
-import { renderTable } from './render-table';
-import { ProcessedEslintResult } from '../parse';
-import { extent, max, group } from 'd3-array';
+import { renderTable } from '../utils/markdown-table';
+import { max } from 'd3-array';
 import {
   formatTimeColored,
   formatPercentageColored,
@@ -10,82 +9,41 @@ import {
   formatRuleId,
 } from './format';
 import {
-  extractRuleEntries,
-  extractFileEntries,
-  extractHierarchicalEntries,
-  RuleEntry,
-  FileEntry,
-} from './extract';
+  buildTree,
+  buildHierarchy,
+  flattenNodeStats,
+  StatsRow,
+  FileRow,
+  RuleRow,
+} from './stats-hierarchy';
 import { sortEntries } from './sort';
-import { sparkline } from './spark-line';
-import ansis from 'ansis';
+import { RootStatsNode } from '../parse';
+import { group } from 'd3-array';
+import { sparklineForFile } from './format';
+import { getStringWidth } from '../utils/string-width';
+import theme from './theme';
 
-const stripAnsi = (str: string) => {
-  // eslint-disable-next-line no-control-regex
-  return str.replace(/\u001b\[[0-9;]*m/g, '');
-};
-
-function maxStrLen<T>(data: T[], toStr: (d: T) => string): number {
-  return max(data, (d) => stripAnsi(toStr(d)).length) ?? 0;
-}
-
-type SortableEntry = RuleEntry | FileEntry | HierarchicalEntry;
-
-function formatIdentifier(e: SortableEntry, headerLabel: string): string {
-  const depth = 'depth' in e ? e.depth : undefined;
+function formatIdentifier(e: StatsRow, header: string): string {
   const base =
-    headerLabel === 'Rule' || depth === 1
+    header === 'Rule' || e.depth === 1
       ? formatRuleId(e.identifier)
       : formatFilePath(e.identifier);
-  return depth !== undefined ? '  '.repeat(depth) + base : base;
+  return '  '.repeat(e.depth) + base;
 }
 
-function sparklineForFile(e: FileEntry): string | undefined {
-  if (
-    'parseTime' in e &&
-    e.parseTime !== undefined &&
-    (!('depth' in e) || ('depth' in e && e.depth === 0))
-  ) {
-    const times = [
-      Math.round(e.parseTime * 1000),
-      Math.round((e.rulesTime || 0) * 1000),
-      Math.round((e.fixTime || 0) * 1000),
-    ];
-    return sparkline(times, {
-      max: Math.round(e.time * 1000), // Convert total time to ms
-      colors: [
-        (str) => ansis.dim.green(str), // parse time in green (like file names)
-        (str) => ansis.dim.cyan(str), // rules time in cyan (like rule IDs)
-        (str) => ansis.dim.magenta(str), // fix time in magenta
-      ],
-    });
-  }
-  return undefined;
-}
-
-export type HierarchicalEntry = FileEntry & {
-  depth: number;
-  parentIdentifier?: string;
-  file?: ProcessedEslintResult['files'][0];
-};
-
-function getMaxes<T>(data: T[], accessors: ((d: T) => number)[]): number[] {
-  return accessors.map((fn) => {
-    const [, m = 1] = extent(data, fn) as [number, number?];
-    return m || 1;
-  });
-}
-
-export type TableViewOptions = {
-  sortBy?: 'time' | 'errors' | 'warnings' | 'identifier';
+// 5. Fold immutable options into a single type
+interface BaseViewOptions {
+  sortBy?: 'totalTime' | 'errorCount' | 'warningCount' | 'identifier';
   sortDirection?: 'asc' | 'desc';
   take?: [number, number?];
-};
+}
 
-export type EslintStatsViewOptions = TableViewOptions & {
+export type TableViewOptions = BaseViewOptions;
+
+export interface EslintStatsViewOptions extends BaseViewOptions {
   lastAction?: 'showView' | 'sortBy' | 'sortDirection' | 'take';
   viewName?: 'rule' | 'file' | 'file-rule';
-};
+}
 
 export type TableHeaderOptions = {
   sortBy?: string;
@@ -94,163 +52,244 @@ export type TableHeaderOptions = {
 
 type CellExtras<T> = (entry: T) => string | undefined;
 
-function makeTableView<T extends SortableEntry>(
-  entries: T[],
-  { sortBy = 'time', sortDirection = 'desc', take = [10] }: TableViewOptions,
-  headerLabel: string,
-  extraTimeCell?: CellExtras<T>
-): string[] {
-  const sorted = sortEntries(entries, sortBy, sortDirection) as T[];
+type Maxima = {
+  totalTime: number;
+  pct: number;
+  err: number;
+  warn: number;
+};
 
-  // Calculate max values using all entries
-  const [maxTime, maxPct, maxErr, maxWarn] = getMaxes(sorted, [
-    (d) => d.time,
-    (d) => d.percentage,
-    (d) => d.errors,
-    (d) => d.warnings,
-  ]);
+function formatRow(
+  e: StatsRow,
+  maxes: Maxima,
+  header: string,
+  extra?: CellExtras<StatsRow>
+) {
+  const id = formatIdentifier(e, header);
+  const time = formatTimeColored(e.totalTime, maxes.totalTime);
+  const extraValue = extra ? extra(e) : undefined;
 
-  // For hierarchical data, handle file and rule limits using parentIdentifier
-  const hasHierarchy = entries.some((e) => 'depth' in e);
-  let limited: T[];
+  // Ensure consistent width for time cells with sparklines
+  let tcell: string;
+  if (extraValue) {
+    // Create a fixed-width cell with sparkline on left and time on right
+    const timeStr = time;
+    const sparklineWidth = 6; // sparkline is padded to 6 chars
+    const timeWidth = getStringWidth(timeStr); // Get visual width accounting for ANSI codes
+    const totalWidth = 16; // Fixed total width for the time column
+    const availableSpace = totalWidth - sparklineWidth - timeWidth;
+    const spacing = Math.max(1, availableSpace); // At least 1 space
 
-  if (hasHierarchy) {
-    const [fileLimit, ruleLimit = fileLimit] = take;
-
-    const childrenMap = group(
-      sorted.filter((e) => 'depth' in e && e.depth === 1),
-      (d) => ('parentIdentifier' in d ? d.parentIdentifier : '')
-    );
-
-    const files = sorted.filter((e): e is T => 'depth' in e && e.depth === 0);
-    const limitedFiles = fileLimit > 0 ? files.slice(0, fileLimit) : files;
-
-    limited = limitedFiles.flatMap((file) => {
-      const kids = childrenMap.get(file.identifier) ?? [];
-      const limitedKids = ruleLimit > 0 ? kids.slice(0, ruleLimit) : kids;
-      return [file, ...limitedKids];
-    }) as T[];
+    tcell = `${extraValue}${' '.repeat(spacing)}${timeStr}`;
   } else {
-    limited = take[0] > 0 ? sorted.slice(0, take[0]) : sorted;
+    tcell = time;
   }
 
-  const [maxIdLen, maxTimeLen] = [
-    maxStrLen(limited, (e) => formatIdentifier(e, headerLabel)),
-    maxStrLen(limited, (e) => formatTimeColored(e.time, maxTime)),
-  ];
-
-  const rows = limited.map((e) => {
-    const identifier = formatIdentifier(e, headerLabel);
-    const timeStr = formatTimeColored(e.time, maxTime);
-    let timeCell = timeStr;
-
-    if (extraTimeCell) {
-      const more = extraTimeCell(e);
-      if (more) {
-        timeCell = `${more} ${stripAnsi(timeStr)
-          .padStart(maxTimeLen)
-          .replace(stripAnsi(timeStr).trim(), timeStr)}`;
-      }
-    }
-
-    return [
-      identifier,
-      timeCell,
-      formatPercentageColored(e.percentage, maxPct),
-      formatErrorCount(e.errors, maxErr),
-      formatWarningCount(e.warnings, maxWarn),
-    ];
-  });
-
-  // Calculate the longest time length from all rows including sparklines
-  const longestTimeLength = maxStrLen(rows, (row) => row[1]);
-
   return [
-    renderTable(rows, {
-      headers: getTableHeaders(headerLabel, { sortBy, sortDirection }),
-      width: [
-        maxIdLen, // First column: identifier
-        longestTimeLength, // Second column: time
-        8, // Third column: percentage
-      ],
-    }),
+    id,
+    tcell,
+    formatPercentageColored(e.pct, maxes.pct),
+    formatErrorCount(e.errorCount, maxes.err),
+    formatWarningCount(e.warningCount, maxes.warn),
   ];
 }
 
 type ViewConfig = {
-  extractor: (r: ProcessedEslintResult, t: number) => SortableEntry[];
-  header: string;
-  extra?: CellExtras<SortableEntry>;
+  filter: (r: StatsRow) => boolean;
+  extra?: CellExtras<StatsRow>;
+  label: string;
+  interleave?: boolean;
+  transform?: (rows: StatsRow[], totalTime: number) => StatsRow[];
 };
 
-const viewConfigs: Record<string, ViewConfig> = {
+const VIEWS: Record<string, ViewConfig> = {
   rule: {
-    extractor: extractRuleEntries,
-    header: 'Rule',
+    filter: (r: StatsRow) => r.depth === 1,
+    label: 'Rule',
+    transform: (rows: StatsRow[], totalTime: number) =>
+      rows.map((r: StatsRow) => ({
+        ...r,
+        pct: totalTime > 0 ? (r.totalTime / totalTime) * 100 : 0,
+      })),
   },
   file: {
-    extractor: extractFileEntries,
-    header: 'File',
+    filter: (r: StatsRow) => r.depth === 0,
     extra: sparklineForFile,
+    label: 'File',
   },
   'file-rule': {
-    extractor: extractHierarchicalEntries,
-    header: 'File/Rule',
+    filter: () => true,
+    label: `File → ${theme.icons.rule} Rule`,
+    interleave: true,
     extra: sparklineForFile,
   },
 };
+
+// Helper function to limit entries
+function limitEntries(
+  entries: StatsRow[],
+  take: [number, number?]
+): StatsRow[] {
+  const [limit] = take;
+  return limit > 0 ? entries.slice(0, limit) : entries;
+}
+
+// Pure table renderer for pre-formatted data - no sorting, no limiting
+function renderStatsTable(
+  entries: StatsRow[],
+  headerLabel: string,
+  extraTimeCell?: CellExtras<StatsRow>,
+  headerOptions?: TableHeaderOptions
+): string[] {
+  // Compute maxima
+  const maxes: Maxima = {
+    totalTime: max(entries, (d) => d.totalTime) ?? 1,
+    pct: max(entries, (d) => d.pct) ?? 1,
+    err: max(entries, (d) => d.errorCount) ?? 1,
+    warn: max(entries, (d) => d.warningCount) ?? 1,
+  };
+
+  // Build rows using formatRow helper
+  const rows = entries.map((e) =>
+    formatRow(e, maxes, headerLabel, extraTimeCell)
+  );
+
+  return [
+    renderTable(rows, {
+      headers: getTableHeaders(headerLabel, headerOptions),
+    }),
+  ];
+}
+
+// Convenience function for sorted and limited data
+function renderSortedTable(
+  entries: StatsRow[],
+  options: TableViewOptions,
+  headerLabel: string,
+  extraTimeCell?: CellExtras<StatsRow>
+): string[] {
+  const { sortBy = 'totalTime', sortDirection = 'desc', take = [10] } = options;
+
+  const sorted = sortEntries(entries, sortBy, sortDirection);
+  const limited = limitEntries(sorted, take);
+
+  return renderStatsTable(limited, headerLabel, extraTimeCell, {
+    sortBy,
+    sortDirection,
+  });
+}
 
 export function renderInteractiveEsLintStatsView(
   state: EslintStatsViewOptions,
-  detailedStats: ProcessedEslintResult
+  detailedStats: RootStatsNode
 ): string[] {
   const {
-    sortBy = 'time',
+    viewName = 'file-rule',
+    sortBy = 'totalTime',
     sortDirection = 'desc',
     take = [10],
-    viewName = 'file-rule',
   } = state;
 
-  const tableOptions: TableViewOptions = {
-    sortBy,
-    sortDirection,
-    take,
-  };
+  const totalTime = detailedStats.children.reduce(
+    (sum, n) => sum + n.totalTime,
+    0
+  );
+  const tree = buildTree(detailedStats, totalTime);
+  const root = buildHierarchy(tree, totalTime);
+  const allRows = flattenNodeStats(root);
 
-  const cfg = viewConfigs[viewName] ?? viewConfigs['file-rule'];
-  const totalTime = detailedStats.times.total || 0;
-  const entries = cfg.extractor(detailedStats, totalTime);
+  // Data-driven view configuration
+  const cfg = VIEWS[viewName] || VIEWS['file-rule'];
+  let items = allRows.filter(cfg.filter);
 
-  return makeTableView(
-    entries,
-    tableOptions,
-    cfg.header,
-    cfg.extra as CellExtras<SortableEntry> | undefined
+  // Apply transform if needed
+  if (cfg.transform) {
+    items = cfg.transform(items, totalTime);
+  }
+
+  // File-rule interleave logic
+  if (cfg.interleave) {
+    const files = items.filter((r): r is FileRow => r.depth === 0);
+    const ruleRows = items.filter((r): r is RuleRow => r.depth === 1);
+    const rulesByFile = group(ruleRows, (r: RuleRow) => r.parent);
+
+    // Sort files by the specified criteria
+    const sortedFiles = sortEntries(files, sortBy, sortDirection);
+
+    // Handle hierarchical take limits: [fileLimit, ruleLimit]
+    const [fileLimit, ruleLimit = fileLimit] = take;
+    const limitedFiles = limitEntries(sortedFiles, [fileLimit]);
+
+    items = limitedFiles.flatMap((file) => {
+      const kids = rulesByFile.get(file.identifier) ?? [];
+      // Sort rules within each file by the specified criteria
+      const sortedKids = sortEntries(kids, sortBy, sortDirection);
+      const limitedKids = limitEntries(sortedKids, [ruleLimit]);
+      return [file, ...limitedKids];
+    });
+
+    // Use renderStatsTable for pre-sorted and pre-limited hierarchical data
+    return renderStatsTable(items, cfg.label, cfg.extra, {
+      sortBy,
+      sortDirection,
+    });
+  }
+
+  // Use renderSortedTable for non-hierarchical data that needs sorting
+  return renderSortedTable(
+    items,
+    { sortBy, sortDirection, take },
+    cfg.label,
+    cfg.extra
   );
 }
 
 export function getTableHeaders(
-  firstColumn: string,
-  options: TableHeaderOptions = {}
+  first: string,
+  opts: TableHeaderOptions = {}
 ): string[] {
-  const { sortBy, sortDirection } = options;
-  const getArrow = (column: string) => {
-    if (sortBy !== column) return '';
-    return sortDirection === 'asc' ? ' ↑' : ' ↓';
+  const { sortBy = 'totalTime', sortDirection = 'desc' } = opts;
+
+  // Helper function to show arrow for the correct column
+  const arrow = (col: string) => {
+    let showArrow = false;
+
+    // Map sortBy values to column identifiers
+    switch (sortBy) {
+      case 'totalTime':
+        showArrow = col === 'totalTime';
+        break;
+      case 'errorCount':
+        showArrow = col === 'errorCount';
+        break;
+      case 'warningCount':
+        showArrow = col === 'warningCount';
+        break;
+      case 'identifier':
+        showArrow = col === 'identifier';
+        break;
+    }
+
+    return showArrow ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '';
   };
 
-  const formatHeader = (label: string, column: string) => {
-    if (label === 'Rule') {
-      return `${label}`;
+  // Simplified approach: use emojis with consistent spacing
+  const getFirstColumnHeader = () => {
+    if (first === 'File') {
+      return `${theme.icons.file} ${first}${arrow('identifier')}`;
+    } else if (first === 'Rule') {
+      return `${theme.icons.rule}  ${first}${arrow('identifier')}`;
+    } else if (first === `File → ${theme.icons.rule} Rule`) {
+      return `${theme.icons.file} ${first}${arrow('identifier')}`;
     }
-    return `${label}${getArrow(column)}`;
+    return `${first}${arrow('identifier')}`;
   };
 
   return [
-    formatHeader(firstColumn, 'identifier'),
-    formatHeader('Time', 'time'),
-    formatHeader('%', 'time'),
-    formatHeader('🚨 Errors', 'errors'),
-    formatHeader('⚠️ Warnings', 'warnings'),
+    getFirstColumnHeader(),
+    `${theme.icons.time} Time${arrow('totalTime')}`,
+    `%${arrow('totalTime')}`, // Percentage follows time sorting
+    `${theme.icons.error} Errors${arrow('errorCount')}`,
+    `${theme.icons.warning}  Warnings${arrow('warningCount')}`,
   ];
 }

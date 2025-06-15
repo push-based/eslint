@@ -5,7 +5,7 @@ import measureCommand from '../command/measure';
 import { analyseCommand } from '../command/analyse/analyse.command';
 
 export function main() {
-  yargs(hideBin(process.argv))
+  void yargs(hideBin(process.argv))
     .scriptName('eslint-stats')
     .usage('$0 <command> [options]')
     .command(measureCommand)

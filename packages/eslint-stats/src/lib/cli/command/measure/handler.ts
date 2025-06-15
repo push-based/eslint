@@ -1,9 +1,9 @@
-import { runEslintWithStats } from '../../../stats/run-eslint-with-stats';
+import { runEslintWithStats } from '../../../parse/run-eslint-with-stats';
 import { analyseHandler } from '../analyse/handler';
 import { AnalyseArgs, group, sort, sortDirection } from '../analyse/types';
 import { join } from 'path';
 import { MeasureArgs } from './types';
-import { objectToCliArgs } from '../../../stats/run-eslint-with-stats';
+import { objectToCliArgs } from '../../../parse/run-eslint-with-stats';
 
 export async function handler(argv: MeasureArgs): Promise<void> {
   const { show: showReport, args, fileOutput, interactive, ...restArgv } = argv;
@@ -39,7 +39,6 @@ export async function handler(argv: MeasureArgs): Promise<void> {
         groupBy: group.rule,
         sortBy: sort.time,
         sortDirection: sortDirection.desc,
-        show: [],
         interactive,
       };
       await analyseHandler(analyseArgs);
@@ -49,7 +48,8 @@ export async function handler(argv: MeasureArgs): Promise<void> {
     if (result.code !== 0) {
       process.exit(result.code || 1);
     }
-  } catch (error) {
+  } catch (_error) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     // error is logged by runEslintWithStats
     process.exit(1);
   }

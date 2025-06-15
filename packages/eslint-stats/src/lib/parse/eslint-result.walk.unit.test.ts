@@ -31,6 +31,7 @@ describe('walkEslintResult', () => {
       visitFile: vi.fn(),
       visitMessage: vi.fn(),
       visitRule: vi.fn(),
+      getResults: vi.fn(),
     };
     walkEslintResult(mockResults, visitor);
 
@@ -122,6 +123,7 @@ describe('walkEslintResult', () => {
       visitFile: vi.fn().mockReturnValueOnce(false),
       visitMessage: vi.fn(),
       visitRule: vi.fn(),
+      getResults: vi.fn(),
     };
     walkEslintResult(mockResults, visitor, { stopOnFalse: true });
 
