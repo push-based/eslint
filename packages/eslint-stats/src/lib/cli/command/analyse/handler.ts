@@ -13,6 +13,7 @@ import {
 } from '../../../stats';
 import { readFileSync } from 'fs';
 import { ESLint } from 'eslint';
+import * as path from 'path';
 
 function initInteractiveState(argv: AnalyseArgs): InteractiveCommandState {
   const take = argv.take?.map((n: number | string) => Number(n)) ?? [10];
@@ -24,6 +25,10 @@ function initInteractiveState(argv: AnalyseArgs): InteractiveCommandState {
       ? [take[0], take[0]] // Use same limit for both files and rules if only one provided
       : take;
 
+  // Create output path from input file with .md extension
+  const parsedPath = path.parse(argv.file);
+  const outputPath = path.join(parsedPath.dir, parsedPath.name + '.md');
+
   return {
     groupByIndex: groupByOptions.indexOf(argv.groupBy),
     sortByIndex: sortByOptions.indexOf(argv.sortBy),
@@ -31,6 +36,7 @@ function initInteractiveState(argv: AnalyseArgs): InteractiveCommandState {
     take: normalizedTake,
     interactive: argv.interactive ?? false,
     file: argv.file,
+    outputPath,
     activeLayer: isFileRuleView ? 'file' : undefined, // Initialize to 'file' for file-rule view
   };
 }

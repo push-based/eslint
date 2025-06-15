@@ -298,6 +298,11 @@ export function startInteractiveSession(
 }
 
 export function reprintSection(newTexts: string[]): void {
+  // clear screen
+  process.stdout.write('\u001B[2J');
+  // move cursor to top left
+  process.stdout.write('\u001B[0;0H');
+
   const output = newTexts.join('\n');
   process.stdout.write('\u001B[2J\u001B[0;0H' + output + '\u001B[0;0H');
 }

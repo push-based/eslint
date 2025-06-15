@@ -59,31 +59,36 @@ export function createInteractiveOptions(
     )} ${ansis.gray('(+/-)')}`;
   }
 
-  const quitControl = `${ansis.cyan('Quit:')} ${ansis.yellow('Ctrl+C')} `;
-
-  const leftHeader = [
+  // First row: Main options
+  const firstRow = [
     lastAction === 'group' ? ansis.bold(groupControl) : groupControl,
     lastAction === 'sort' ? ansis.bold(sortControl) : sortControl,
     lastAction === 'order' ? ansis.bold(orderControl) : orderControl,
-  ].join(' | ');
-
-  const rightHeaderControls = [
     lastAction === 'rows' || lastAction === 'layer'
       ? ansis.bold(rowsControl)
       : rowsControl,
-  ];
+  ].join(' | ');
+
+  // Second row: Action options
+  const quitControl = `${ansis.cyan('Quit:')} ${ansis.yellow('Ctrl+C')}`;
+  const infoControl = `${ansis.cyan('Info:')} ${ansis.yellow('I')}`;
+
+  const actionControls = [];
 
   if (outputPath) {
     const writeControlStr = `${ansis.cyan('Write:')} ${ansis.yellow('Enter')}`;
     const writeControl =
       lastAction === 'write' ? ansis.bold(writeControlStr) : writeControlStr;
-    rightHeaderControls.push(writeControl);
+    actionControls.push(writeControl);
   }
 
-  rightHeaderControls.push(quitControl);
-  const rightHeader = rightHeaderControls.join(' | ');
+  actionControls.push(quitControl);
+  actionControls.push(infoControl);
+  const secondRow = actionControls.join(' | ');
 
-  const header = `${leftHeader} | ${rightHeader}`;
+  // Combine both rows
+  const header = `${firstRow}\n${secondRow}`;
+
   if (notification) {
     return `${ansis.green(notification)}\n${header}`;
   }

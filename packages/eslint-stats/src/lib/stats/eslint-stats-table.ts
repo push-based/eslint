@@ -20,6 +20,7 @@ import { sortEntries } from './sort';
 import { RootStatsNode } from '../parse';
 import { group } from 'd3-array';
 import { sparklineForFile } from './format';
+import { getStringWidth } from '../utils/string-width';
 
 function formatIdentifier(e: StatsRow, header: string): string {
   const base =
@@ -65,7 +66,24 @@ function formatRow(
 ) {
   const id = formatIdentifier(e, header);
   const time = formatTimeColored(e.totalTime, maxes.totalTime);
-  const tcell = extra ? `${extra(e) || ''} ${time}`.trim() : time;
+  const extraValue = extra ? extra(e) : undefined;
+
+  // Ensure consistent width for time cells with sparklines
+  let tcell: string;
+  if (extraValue) {
+    // Create a fixed-width cell with sparkline on left and time on right
+    const timeStr = time;
+    const sparklineWidth = 6; // sparkline is padded to 6 chars
+    const timeWidth = getStringWidth(timeStr); // Get visual width accounting for ANSI codes
+    const totalWidth = 16; // Fixed total width for the time column
+    const availableSpace = totalWidth - sparklineWidth - timeWidth;
+    const spacing = Math.max(1, availableSpace); // At least 1 space
+
+    tcell = `${extraValue}${' '.repeat(spacing)}${timeStr}`;
+  } else {
+    tcell = time;
+  }
+
   return [
     id,
     tcell,
@@ -210,7 +228,10 @@ export function renderInteractiveEsLintStatsView(
     });
 
     // Use renderStatsTable for pre-sorted and pre-limited hierarchical data
-    return renderStatsTable(items, cfg.label, cfg.extra);
+    return renderStatsTable(items, cfg.label, cfg.extra, {
+      sortBy,
+      sortDirection,
+    });
   }
 
   // Use renderSortedTable for non-hierarchical data that needs sorting
@@ -227,13 +248,34 @@ export function getTableHeaders(
   opts: TableHeaderOptions = {}
 ): string[] {
   const { sortBy = 'totalTime', sortDirection = 'desc' } = opts;
-  const arrow = (col: string) =>
-    sortBy === col ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '';
+
+  // Helper function to show arrow for the correct column
+  const arrow = (col: string) => {
+    let showArrow = false;
+
+    // Map sortBy values to column identifiers
+    switch (sortBy) {
+      case 'totalTime':
+        showArrow = col === 'totalTime';
+        break;
+      case 'errorCount':
+        showArrow = col === 'errorCount';
+        break;
+      case 'warningCount':
+        showArrow = col === 'warningCount';
+        break;
+      case 'identifier':
+        showArrow = col === 'identifier';
+        break;
+    }
+
+    return showArrow ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : '';
+  };
 
   return [
     `${first}${arrow('identifier')}`,
     `Time${arrow('totalTime')}`,
-    `%${arrow('totalTime')}`,
+    `%${arrow('totalTime')}`, // Percentage follows time sorting
     `🚨 Errors${arrow('errorCount')}`,
     `⚠️ Warnings${arrow('warningCount')}`,
   ];

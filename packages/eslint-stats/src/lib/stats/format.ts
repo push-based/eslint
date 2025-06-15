@@ -61,7 +61,7 @@ export function sparklineForFile(e: StatsRow): string | undefined {
     Math.round(otherTime * 1000),
   ];
 
-  return asciiSparkline(timesMs, {
+  const sparkline = asciiSparkline(timesMs, {
     min: 0,
     max: Math.round(totalTime * 1000),
     colors: [
@@ -71,4 +71,7 @@ export function sparklineForFile(e: StatsRow): string | undefined {
       (s: string) => theme.text.dim(s), // Other time (misc operations) - use dim color
     ],
   });
+
+  // Pad sparkline to ensure consistent alignment - sparkline is 4 chars, pad to 6 total width
+  return sparkline.padEnd(6, ' ');
 }
