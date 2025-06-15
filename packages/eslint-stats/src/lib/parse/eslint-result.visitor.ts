@@ -1,104 +1,67 @@
 import type { ESLint, Linter } from 'eslint';
 import {
   EslintResultVisitor,
-  ProcessedEslintResult,
-  ProcessedFile,
-  ProcessedRule,
+  FileStatsNode,
+  RuleStatsNode,
+  RootStatsNode,
+  StatsTotals,
+  computeTotals,
 } from './eslint-result-visitor';
 import { walkEslintResult } from './eslint-result.walk';
 
-export interface ProcessedEslintResultTotals {
-  totalFiles: number;
-  totalRules: number;
-  totalTimeMs: number;
-  totalErrors: number;
-  totalWarnings: number;
-  totalFileErrors: number;
-  totalFileWarnings: number;
-  totalFixableErrors: number;
-  totalFixableWarnings: number;
-}
-
 export function createProcessedTotalsTracker() {
-  const totals: ProcessedEslintResultTotals = {
-    totalFiles: 0,
-    totalRules: 0,
-    totalTimeMs: 0,
-    totalErrors: 0,
-    totalWarnings: 0,
-    totalFileErrors: 0,
-    totalFileWarnings: 0,
-    totalFixableErrors: 0,
-    totalFixableWarnings: 0,
-  };
+  const files: FileStatsNode[] = [];
 
   return {
-    trackFile(fileResult: ProcessedFile): void {
-      totals.totalTimeMs += fileResult.times.total;
-      totals.totalFiles += 1;
-      totals.totalFileErrors += fileResult.violations.errorCount;
-      totals.totalFileWarnings += fileResult.violations.warningCount;
-      totals.totalFixableErrors += fileResult.violations.fixableErrorCount;
-      totals.totalFixableWarnings += fileResult.violations.fixableWarningCount;
+    trackFile(fileResult: FileStatsNode): void {
+      files.push(fileResult);
     },
 
-    trackRule(ruleResult: ProcessedRule): void {
-      totals.totalErrors += ruleResult.violations.errorMessages.length;
-      totals.totalWarnings += ruleResult.violations.warningMessages.length;
+    trackRule(ruleResult: RuleStatsNode): void {
+      // Rules are already added to their parent file's children
+      // No additional tracking needed here
     },
 
-    getTotals(): ProcessedEslintResultTotals {
-      return totals;
+    getTotals(): StatsTotals {
+      return computeTotals(files);
     },
   };
 }
 
 type ESLintResult = ESLint.LintResult;
 
-export function createProcessEslintResultVisitor(): EslintResultVisitor & {
-  getResults(): ProcessedEslintResult;
-} {
-  const results: ProcessedFile[] = [];
+export function createProcessEslintResultVisitor(): EslintResultVisitor {
+  const results: FileStatsNode[] = [];
   const totalsTracker = createProcessedTotalsTracker();
-  let currentFile: ProcessedFile | undefined = undefined;
 
   return {
-    visitFile(fileResult: ProcessedFile): void {
-      currentFile = fileResult;
+    visitFile(fileResult: FileStatsNode): void {
       totalsTracker.trackFile(fileResult);
       results.push(fileResult);
     },
 
-    visitMessage(message: Linter.LintMessage, fileResult: ProcessedFile): void {
+    visitMessage(message: Linter.LintMessage, fileResult: FileStatsNode): void {
       return;
     },
 
-    visitRule(ruleData: ProcessedRule, _: ProcessedFile): void {
-      if (currentFile === undefined) {
-        return;
-      }
-      currentFile.rules.push(ruleData);
+    visitRule(ruleData: RuleStatsNode, fileData: FileStatsNode): void {
+      // Rules are now automatically pushed to fileData.children in walkEslintResult
       totalsTracker.trackRule(ruleData);
     },
 
-    getResults(): ProcessedEslintResult {
-      const totals = totalsTracker.getTotals();
+    getResults(): RootStatsNode {
       return {
-        violations: {},
-        times: {
-          total: totals.totalTimeMs,
-        },
-        files: [...results],
+        type: 'root',
+        children: [...results],
       };
     },
   };
 }
 
-export function processEslintResults(
-  results: ESLintResult[]
-): ProcessedEslintResult {
+export function processEslintResults(results: ESLintResult[]): RootStatsNode {
+  // Create a simple visitor that just tracks files for totals calculation
   const visitor = createProcessEslintResultVisitor();
-  walkEslintResult(results, visitor);
 
-  return visitor.getResults();
+  // walkEslintResult now returns the RootStatsNode directly with rules populated in children
+  return walkEslintResult(results, visitor);
 }

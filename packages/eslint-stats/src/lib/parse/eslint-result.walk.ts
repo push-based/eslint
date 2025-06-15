@@ -1,129 +1,93 @@
 import { ESLint, Linter } from 'eslint';
 import {
   EslintResultVisitor,
-  ProcessedFile,
-  ProcessedRule,
+  FileStatsNode,
+  RuleStatsNode,
+  RootStatsNode,
+  StopOnFalseWalkOptions,
 } from './eslint-result-visitor';
-import { StopOnFalseWalkOptions } from './walk.types';
-import TimePass = Linter.TimePass;
 
 type ESLintResult = ESLint.LintResult;
 type ESLintMessage = Linter.LintMessage;
 
 export function walkEslintResult(
-  parsedResults: ESLintResult[],
+  parsed: ESLintResult[],
   visitor: EslintResultVisitor,
-  options: StopOnFalseWalkOptions = {}
-): void {
-  const { stopOnFalse = false } = options;
-  const fileMap = new Map<string, ProcessedFile>();
+  { stopOnFalse = false }: StopOnFalseWalkOptions = {}
+): RootStatsNode {
+  const files: FileStatsNode[] = [];
 
-  for (const fileResult of parsedResults) {
-    if (!fileMap.has(fileResult.filePath)) {
-      const times = fileResult.stats?.times.passes.at(0) || ({} as TimePass);
-      const fileVisitData: ProcessedFile = {
-        filePath: fileResult.filePath,
-        violations: {
-          errorCount: fileResult.errorCount,
-          fatalErrorCount: fileResult.fatalErrorCount,
-          warningCount: fileResult.warningCount,
-          fixableErrorCount: fileResult.fixableErrorCount,
-          fixableWarningCount: fileResult.fixableWarningCount,
-          fixPasses:
-            fileResult.fixableErrorCount + fileResult.fixableWarningCount,
-        },
-        times: {
-          parse: times.parse?.total || 0,
-          rules: Object.entries(times.rules ?? {}).reduce(
-            (acc, [ruleId, timeStats]) => {
-              acc[ruleId] = timeStats.total || 0;
-              return acc;
-            },
-            {} as Record<string, number>
-          ),
-          fix: times.fix?.total || 0,
-          total: times?.total || 0,
-        },
-        rules: [],
-      };
+  outer: for (const res of parsed) {
+    const pass = res.stats?.times.passes?.[0];
+    const total = pass?.total ?? 0;
+    const fix = pass?.fix?.total ?? 0;
+    const parse = pass?.parse?.total ?? 0;
 
-      fileMap.set(fileResult.filePath, fileVisitData);
-    }
-    const fileData = fileMap.get(fileResult.filePath) as ProcessedFile;
-    if (visitor.visitFile) {
-      const result = visitor.visitFile(fileData);
-      // early exit in files if stopOnFalse is true
-      if (result === false && stopOnFalse) break;
-    }
+    const file: FileStatsNode = {
+      type: 'file',
+      identifier: res.filePath,
+      errorCount: res.errorCount,
+      fatalErrorCount: res.fatalErrorCount ?? 0,
+      warningCount: res.warningCount,
+      fixableErrorCount: res.fixableErrorCount,
+      fixableWarningCount: res.fixableWarningCount,
+      fixPasses: res.source ? 1 : 0,
+      totalTime: total,
+      timePct: 0,
+      fixTime: fix,
+      parseTime: parse,
+      rulesTime: 0,
+      children: [],
+    };
 
-    const messages = fileResult.messages || [];
-    for (const message of messages) {
-      if (visitor.visitMessage) {
-        const result = visitor.visitMessage(message, fileData);
-        // early exit in messages if stopOnFalse is true
-        if (result === false && stopOnFalse) {
-          return;
-        }
+    if (visitor.visitFile?.(file) === false && stopOnFalse) break;
+
+    for (const msg of res.messages || []) {
+      if (visitor.visitMessage?.(msg, file) === false && stopOnFalse) {
+        break outer;
       }
     }
 
     if (visitor.visitRule) {
-      const ruleStatsMap: Record<string, number> = fileData.times.rules;
-      const ruleMsgMap = messages.reduce<
-        Record<
-          string,
-          {
-            errorMessages: ESLintMessage[];
-            warningMessages: ESLintMessage[];
-            offMessages: ESLintMessage[];
-          }
-        >
-      >((acc, msg) => {
-        if (msg.ruleId) {
-          if (!acc[msg.ruleId]) {
-            acc[msg.ruleId] = {
-              errorMessages: [],
-              warningMessages: [],
-              offMessages: [],
-            };
-          }
-          // 0 === "off"
-          // 1 === "warn"
-          // 2 === "error"
-          if (msg.severity === 1) {
-            acc[msg.ruleId].errorMessages.push(msg);
-          } else if (msg.severity === 2) {
-            acc[msg.ruleId].warningMessages.push(msg);
-          } else {
-            acc[msg.ruleId].offMessages.push(msg);
-          }
-        }
-        return acc;
-      }, {});
-      const allRuleIds: Set<string> = new Set([
-        ...messages
-          .filter((msg) => typeof msg.ruleId === 'string')
-          .map((msg) => String(msg.ruleId)),
-        ...Object.keys(ruleStatsMap),
-      ]);
-
-      for (const ruleId of allRuleIds) {
-        const ruleData: ProcessedRule = {
-          ruleId,
-          violations: {
-            errorMessages: ruleMsgMap[ruleId]?.errorMessages || [],
-            warningMessages: ruleMsgMap[ruleId]?.warningMessages || [],
-            offMessages: ruleMsgMap[ruleId]?.offMessages || [],
-          },
-          time: ruleStatsMap[ruleId] || 0,
+      // build time+message map
+      const info = new Map<
+        string,
+        { totalTime: number; errs: ESLintMessage[]; warns: ESLintMessage[] }
+      >();
+      for (const [rid, ts] of Object.entries(pass?.rules || {})) {
+        info.set(rid, { totalTime: ts.total ?? 0, errs: [], warns: [] });
+      }
+      for (const msg of res.messages || []) {
+        if (!msg.ruleId) continue;
+        const rec = info.get(msg.ruleId) ?? {
+          totalTime: 0,
+          errs: [],
+          warns: [],
         };
+        (msg.severity === 2 ? rec.errs : rec.warns).push(msg);
+        info.set(msg.ruleId, rec);
+      }
 
-        const result = visitor.visitRule(ruleData, fileData);
-        // early exit in rules if stopOnFalse is true
-        if (result === false && stopOnFalse) {
-          return;
+      for (const [rid, { totalTime, errs, warns }] of info) {
+        const node: RuleStatsNode = {
+          type: 'rule',
+          identifier: rid,
+          errorCount: errs.length,
+          warningCount: warns.length,
+          totalTime,
+          timePct: 0,
+        };
+        file.rulesTime += totalTime;
+        file.children.push(node);
+
+        if (visitor.visitRule(node, file) === false && stopOnFalse) {
+          break outer;
         }
       }
     }
+
+    files.push(file);
   }
+
+  return { type: 'root', children: files };
 }

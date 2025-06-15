@@ -4,6 +4,7 @@ import {
   groupByOptions,
   sortByOptions,
   InteractiveCommandState,
+  SortByOption,
 } from './command-state';
 import {
   EslintStatsViewOptions,
@@ -26,12 +27,27 @@ function initInteractiveState(argv: AnalyseArgs): InteractiveCommandState {
   };
 }
 
+// Type-safe mapping function for internal options
+function mapSortByOptionToField(
+  option: SortByOption
+): 'totalTime' | 'errorCount' {
+  switch (option) {
+    case 'time':
+      return 'totalTime';
+    case 'violations':
+      return 'errorCount';
+    default:
+      // This should never happen due to exhaustive checking
+      const _exhaustive: never = option;
+      throw new Error(`Unhandled sort option: ${_exhaustive}`);
+  }
+}
+
 function convertInteractiveStateToEslintStatsViewState(
   state: InteractiveCommandState
 ): EslintStatsViewOptions {
   const sortByValue = sortByOptions[state.sortByIndex];
-  const sortBy =
-    sortByValue === 'violations' ? 'errors' : (sortByValue as 'time');
+  const sortBy = mapSortByOptionToField(sortByValue);
   const viewName = groupByOptions[state.groupByIndex];
 
   // Ensure take is always a tuple of at least one number

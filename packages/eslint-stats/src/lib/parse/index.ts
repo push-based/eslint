@@ -1,4 +1,7 @@
-export * from './eslint-result.visitor';
 export * from './eslint-result-visitor';
 export * from './eslint-result.walk';
-export * from './walk.types';
+export {
+  createProcessEslintResultVisitor,
+  createProcessedTotalsTracker,
+  processEslintResults,
+} from './eslint-result.visitor';

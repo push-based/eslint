@@ -25,6 +25,8 @@ import {
   groupByOptions,
   InteractiveCommandState,
   sortByOptions,
+  SortByOption,
+  GroupByOption,
 } from './command-state';
 import { createInteractiveOptions } from './utils';
 import { processEslintResults } from '../../../parse';
@@ -116,6 +118,39 @@ export function updateStateOnKeyPress(
   }
 }
 
+// Type-safe mapping functions
+function mapSortByOptionToField(
+  option: SortByOption
+): 'totalTime' | 'errorCount' {
+  switch (option) {
+    case 'time':
+      return 'totalTime';
+    case 'violations':
+      return 'errorCount';
+    default:
+      // This should never happen due to exhaustive checking
+      const _exhaustive: never = option;
+      throw new Error(`Unhandled sort option: ${_exhaustive}`);
+  }
+}
+
+function mapGroupByOptionToViewName(
+  option: GroupByOption
+): 'rule' | 'file' | 'file-rule' {
+  switch (option) {
+    case 'rule':
+      return 'rule';
+    case 'file':
+      return 'file';
+    case 'file-rule':
+      return 'file-rule';
+    default:
+      // This should never happen due to exhaustive checking
+      const _exhaustive: never = option;
+      throw new Error(`Unhandled group option: ${_exhaustive}`);
+  }
+}
+
 export function handleWriteAction(
   state: InteractiveCommandState,
   tableStr: string,
@@ -126,7 +161,7 @@ export function handleWriteAction(
 
   const { groupByIndex, sortByIndex, sortOrder, take } = state;
   const groupBy = groupByOptions[groupByIndex];
-  const sortBy = sortByOptions[sortByIndex];
+  const sortBy = mapSortByOptionToField(sortByOptions[sortByIndex]);
   const stateDescription = `> State: Group by **${groupBy}**, Sort by **${sortBy}** (${sortOrder}), Rows: **${take.join(
     ', '
   )}**`;
@@ -153,11 +188,10 @@ export function convertInteractiveStateToViewOptions(
   state: InteractiveCommandState
 ): EslintStatsViewOptions {
   const sortByValue = sortByOptions[state.sortByIndex];
-  const sortBy: EslintStatsViewOptions['sortBy'] =
-    sortByValue === 'violations' ? 'errors' : (sortByValue as 'time');
-  const viewName = groupByOptions[
-    state.groupByIndex
-  ] as EslintStatsViewOptions['viewName'];
+  const sortBy = mapSortByOptionToField(sortByValue);
+  const viewName = mapGroupByOptionToViewName(
+    groupByOptions[state.groupByIndex]
+  );
 
   // Convert take to a tuple format
   const take: [number, number?] =

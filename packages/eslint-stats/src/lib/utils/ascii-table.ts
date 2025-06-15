@@ -1,12 +1,12 @@
 import ansis from 'ansis';
-import { getStringWidth } from '../utils/string-width';
+import { getStringWidth } from './string-width';
 import { max } from 'd3-array';
 
 type Opts = {
   headers: string[];
   borderColor?: (s: string) => string;
-  width?: number[]; // force a column width
-  maxWidth?: number; // clamp any column to this many visible chars
+  width?: number[];
+  maxWidth?: number; // Maximum width for any column
 };
 
 // regex that matches either an ANSI escape or a single code unit
@@ -14,23 +14,30 @@ const ANSI_OR_CHAR = /\u001b\[[0-9;]*m|[\s\S]/g;
 
 /** truncate a raw ANSI-string to at most maxWidth visible chars, preserving escapes */
 function truncateAnsi(raw: string, maxWidth: number): string {
+  if (getStringWidth(raw) <= maxWidth) return raw;
+
   let visible = 0;
   let out = '';
-  for (const m of raw.matchAll(ANSI_OR_CHAR)) {
-    const tok = m[0];
+  let match;
+
+  while ((match = ANSI_OR_CHAR.exec(raw)) !== null) {
+    const tok = match[0];
     if (tok.startsWith('\u001b[')) {
       // copy ANSI
       out += tok;
     } else {
       if (visible < maxWidth - 1) {
         out += tok;
-      } else {
+        visible++;
+      } else if (visible === maxWidth - 1) {
         out += '…';
         break;
       }
-      visible++;
     }
   }
+
+  // Reset the regex
+  ANSI_OR_CHAR.lastIndex = 0;
   return out;
 }
 
@@ -57,7 +64,7 @@ function computeWidths(
 }
 
 /**
- * Render a UTF-8 + ANSI-aware table.
+ * Render a UTF-8 + ANSI-aware table for the terminal.
  */
 export function renderTable(
   rows: string[][],
@@ -84,4 +91,13 @@ export function renderTable(
   const dataLines = rows.map((r) => makeLine(r, false));
 
   return [headerLine, separator, ...dataLines].join('\n');
+}
+
+// Keep these for backward compatibility if needed elsewhere
+export function alignLeft(str: string, len: number, ch?: string): string {
+  return str + new Array(len - str.length + 1).join(ch || ' ');
+}
+
+export function alignRight(str: string, len: number, ch?: string): string {
+  return new Array(len - str.length + 1).join(ch || ' ') + str;
 }

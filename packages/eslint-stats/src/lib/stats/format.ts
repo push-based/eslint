@@ -1,82 +1,7 @@
-import ansis from 'ansis';
 import path from 'path';
-import { scaleLinear, scaleSequential } from 'd3-scale';
-import {
-  interpolateBlues,
-  interpolateOranges,
-  interpolateReds,
-} from 'd3-scale-chromatic';
-import { color, RGBColor } from 'd3-color';
-import { format } from 'd3-format';
-
-function hexToRgb(hex: string): [number, number, number] {
-  const c = color(hex) as RGBColor;
-  return [c.r, c.g, c.b];
-}
-
-// build our "mid-tone" scales by clamping the domain to [0.3, 0.8]
-function makeMidToneScale(
-  interpolator: (t: number) => string,
-  range: [number, number] = [0.3, 0.8]
-) {
-  // map [0–1] → [0.3–0.8] then feed into your interpolator
-  const clampStep = scaleLinear().domain([0, 1]).range(range).clamp(true);
-  const seq = scaleSequential(interpolator);
-  return (value: number, max: number) => {
-    const ratio = max > 0 ? value / max : 0;
-    return seq(clampStep(ratio)) as string;
-  };
-}
-
-const blueSolid = makeMidToneScale(interpolateBlues);
-const redSolid = makeMidToneScale(interpolateReds);
-const yellowSolid = makeMidToneScale(interpolateOranges, [0.2, 0.6]);
-
-type ColorScale = (v: number, m: number) => string;
-
-function makeFormatter(
-  textFmt: (v: number) => string,
-  zeroFmt: (s: string) => string,
-  maxFmt: (s: string) => string,
-  colorScale: ColorScale
-) {
-  return (value: number, max: number) => {
-    const txt = textFmt(value);
-    if (value === 0) return zeroFmt(txt);
-    if (value === max) return maxFmt(txt);
-    const hex = colorScale(value, max);
-    const [r, g, b] = hexToRgb(hex);
-    return ansis.rgb(r, g, b)(txt);
-  };
-}
-
-const fmt2 = format('.2f'); // e.g. "123.45"
-const fmt1p = format('.1%'); // e.g. "12.3%"
-
-const fmtTime = makeFormatter(
-  (v) => `${fmt2(v)} ms`,
-  ansis.dim.gray,
-  ansis.bold.blue,
-  blueSolid
-);
-const fmtPercent = makeFormatter(
-  (v) => fmt1p(v / 100),
-  ansis.dim.gray,
-  ansis.bold.blue,
-  blueSolid
-);
-const fmtErrors = makeFormatter(
-  (v) => v.toString(),
-  ansis.dim.gray,
-  ansis.bold.red,
-  redSolid
-);
-const fmtWarnings = makeFormatter(
-  (v) => v.toString(),
-  ansis.dim.gray,
-  ansis.bold.yellow,
-  yellowSolid
-);
+import theme from './theme';
+import { StatsRow } from './stats-hierarchy';
+import { asciiSparkline } from '../utils/ascii-sparkline';
 
 /**
  * Formats a file path with colored directory and filename
@@ -101,8 +26,8 @@ export function formatFilePath(filePath: string): string {
   }
 
   return dirname === '.'
-    ? ansis.green(basename)
-    : `${ansis.dim.gray(truncatedDir)}${path.sep}${ansis.green(basename)}`;
+    ? theme.text.file(basename)
+    : `${theme.text.dim(truncatedDir)}${path.sep}${theme.text.file(basename)}`;
 }
 
 /**
@@ -112,30 +37,38 @@ export function formatFilePath(filePath: string): string {
  */
 export function formatRuleId(ruleId: string): string {
   if (!ruleId.includes('/')) {
-    return ansis.cyan(ruleId);
+    return theme.text.rule(ruleId);
   }
   const [plugin, rule] = ruleId.split('/');
-  return `${ansis.dim.gray(plugin + '/')}${ansis.cyan(rule)}`;
+  return `${theme.text.dim(plugin + '/')}${theme.text.rule(rule)}`;
 }
 
-export function formatTimeColored(time: number, maxTime: number): string {
-  return fmtTime(time, maxTime);
-}
+// Use the shared theme formatters directly
+export const formatTimeColored = theme.fmt.timeFmt;
+export const formatPercentageColored = theme.fmt.pctFmt;
+export const formatErrorCount = theme.fmt.errFmt;
+export const formatWarningCount = theme.fmt.warnFmt;
 
-export function formatPercentageColored(
-  percentage: number,
-  maxPercentage: number
-): string {
-  return fmtPercent(percentage, maxPercentage);
-}
+export function sparklineForFile(e: StatsRow): string | undefined {
+  if (e.depth !== 0) return undefined;
+  const { rulesTime, fixTime, totalTime, parseTime } = e;
+  const otherTime = Math.max(0, totalTime - rulesTime - fixTime - parseTime);
 
-export function formatErrorCount(errors: number, maxErrors: number): string {
-  return fmtErrors(errors, maxErrors);
-}
+  const timesMs = [
+    Math.round(parseTime * 1000),
+    Math.round(rulesTime * 1000),
+    Math.round(fixTime * 1000),
+    Math.round(otherTime * 1000),
+  ];
 
-export function formatWarningCount(
-  warnings: number,
-  maxWarnings: number
-): string {
-  return fmtWarnings(warnings, maxWarnings);
+  return asciiSparkline(timesMs, {
+    min: 0,
+    max: Math.round(totalTime * 1000),
+    colors: [
+      (s: string) => theme.text.file(s), // Parse time (file processing) - use file color
+      (s: string) => theme.text.rule(s), // Rules time (rule execution) - use rule color
+      (s: string) => theme.text.dim(s), // Fix time (applying fixes) - use dim color (no direct error color in theme.text)
+      (s: string) => theme.text.dim(s), // Other time (misc operations) - use dim color
+    ],
+  });
 }

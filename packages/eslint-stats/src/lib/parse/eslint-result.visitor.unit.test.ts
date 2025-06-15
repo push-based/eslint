@@ -84,9 +84,9 @@ describe('createProcessEslintResultVisitor', () => {
 describe('processEslintResults', () => {
   it('should process violations and organize by file and rule', () => {
     const processedResult = processEslintResults([file1]);
-    expect(processedResult.files[0].filePath).toBe('file1.js');
-    expect(processedResult.files[0].rules.length).toBe(2);
-    expect(processedResult.times.total).toBe(100);
+    expect(processedResult.children[0].identifier).toBe('file1.js');
+    expect(processedResult.children[0].children.length).toBe(2);
+    expect(processedResult.children[0].totalTime).toBe(100);
   });
 
   it('should handle missing timing stats gracefully', () => {
@@ -105,9 +105,9 @@ describe('processEslintResults', () => {
 
     const result = processEslintResults([fileWithoutStats]);
 
-    expect(result.files).toHaveLength(1);
-    expect(result.files[0].filePath).toBe('file-no-stats.js');
-    expect(result.files[0].times.total).toBe(0);
+    expect(result.children).toHaveLength(1);
+    expect(result.children[0].identifier).toBe('file-no-stats.js');
+    expect(result.children[0].totalTime).toBe(0);
   });
 
   it('should properly calculate timing totals across multiple files', () => {
@@ -138,9 +138,11 @@ describe('processEslintResults', () => {
 
     const result = processEslintResults([file1, file2]);
 
-    expect(result.files).toHaveLength(2);
-    expect(result.files[1].filePath).toBe('file2.js');
-    expect(result.files[1].times.total).toBe(50);
-    expect(result.times.total).toBe(150);
+    expect(result.children).toHaveLength(2);
+    expect(result.children[1].identifier).toBe('file2.js');
+    expect(result.children[1].totalTime).toBe(50);
+    expect(result.children[0].totalTime + result.children[1].totalTime).toBe(
+      150
+    );
   });
 });

@@ -1,14 +1,18 @@
 import { ascending, descending } from 'd3-array';
-import { FileEntry, RuleEntry } from './extract';
+import { StatsRow } from './stats-hierarchy';
 
-export type SortableField = 'time' | 'errors' | 'warnings' | 'identifier';
+export type SortableField =
+  | 'totalTime'
+  | 'errorCount'
+  | 'warningCount'
+  | 'identifier';
 
-export type SortableData = RuleEntry | FileEntry;
+export type SortableData = StatsRow;
 
 const accessors: Record<SortableField, (d: SortableData) => number | string> = {
-  time: (d) => d.time,
-  errors: (d) => d.errors,
-  warnings: (d) => d.warnings,
+  totalTime: (d) => d.totalTime,
+  errorCount: (d) => d.errorCount,
+  warningCount: (d) => d.warningCount,
   identifier: (d) => d.identifier,
 };
 
