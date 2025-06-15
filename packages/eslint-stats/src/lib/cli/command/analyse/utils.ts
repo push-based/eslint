@@ -71,7 +71,6 @@ export function createInteractiveOptions(
 
   // Second row: Action options
   const quitControl = `${ansis.cyan('Quit:')} ${ansis.yellow('Ctrl+C')}`;
-  const infoControl = `${ansis.cyan('Info:')} ${ansis.yellow('I')}`;
 
   const actionControls = [];
 
@@ -83,7 +82,6 @@ export function createInteractiveOptions(
   }
 
   actionControls.push(quitControl);
-  actionControls.push(infoControl);
   const secondRow = actionControls.join(' | ');
 
   // Combine both rows
