@@ -1,40 +1,29 @@
 import { runEslintWithStats } from '../../../parse/run-eslint-with-stats';
 import { analyseHandler } from '../analyse/handler';
 import { AnalyseArgs, group, sort, sortDirection } from '../analyse/types';
-import { join } from 'path';
 import { MeasureArgs } from './types';
 import { objectToCliArgs } from '../../../parse/run-eslint-with-stats';
 
 export async function handler(argv: MeasureArgs): Promise<void> {
   const { show: showReport, args, fileOutput, interactive, ...restArgv } = argv;
 
-  let outputFile = fileOutput;
-  if (!outputFile) {
-    outputFile = join(process.cwd(), `eslint-stats.json`);
-  }
-
-  const command = args || [];
+  const command = (args || []).filter((a) => a !== 'measure');
 
   if (command.length === 0) {
     console.error('Error: No command provided to measure.');
     process.exit(1);
   }
 
-  const additionalArgs = objectToCliArgs(restArgv);
+  const { _, $0, ...remainingArgs } = restArgv as any;
+
+  const additionalArgs = objectToCliArgs({ ...remainingArgs });
 
   try {
-    const result = await runEslintWithStats(
-      command,
-      additionalArgs,
-      {
-        outputFile,
-      },
-      console
-    );
+    const result = await runEslintWithStats(command, additionalArgs, console);
 
     if (showReport) {
       const analyseArgs: AnalyseArgs = {
-        file: outputFile,
+        file: fileOutput || result.outputFile,
         // using defaults from yargs in analyse.command.ts
         groupBy: group.rule,
         sortBy: sort.time,

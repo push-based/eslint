@@ -16,6 +16,8 @@ export interface FileStatsEntry extends DisplayStatsWithTime {
   rulesTime: number;
   fixTime: number;
   parseTime: number;
+  fixableErrorCount: number;
+  fixableWarningCount: number;
   children: RuleStatsEntry[];
 }
 
@@ -34,6 +36,8 @@ export type RootData = {
   rulesTime: number;
   fixTime: number;
   parseTime: number;
+  fixableErrorCount: number;
+  fixableWarningCount: number;
   children: FileStatsEntry[];
 };
 export type HierarchyNodeData = NodeStats | RootData;
@@ -45,12 +49,20 @@ export type FileRow = DisplayStatsWithTime & {
   rulesTime: number;
   fixTime: number;
   parseTime: number;
+  fixableErrorCount: number;
+  fixableWarningCount: number;
+  errorsFixable: boolean;
+  warningsFixable: boolean;
 };
 
 export type RuleRow = DisplayStatsWithTime & {
   type: 'rule';
   depth: 1;
   parent: string;
+  fixableErrorCount: number;
+  fixableWarningCount: number;
+  errorsFixable: boolean;
+  warningsFixable: boolean;
 };
 
 export type StatsRow = FileRow | RuleRow;
@@ -68,6 +80,8 @@ export function buildTree(
       rulesTime,
       fixTime,
       parseTime,
+      fixableErrorCount,
+      fixableWarningCount,
       children: rawRules,
     } = file;
 
@@ -99,6 +113,8 @@ export function buildTree(
       rulesTime,
       fixTime,
       parseTime,
+      fixableErrorCount,
+      fixableWarningCount,
       pct,
       children,
     };
@@ -114,7 +130,22 @@ export function toFlatEntry(node: HierarchyNode<NodeStats>): StatsRow {
   };
 
   if (d.type === 'file') {
-    const { totalTime, rulesTime, fixTime, parseTime, pct } = d;
+    const {
+      totalTime,
+      rulesTime,
+      fixTime,
+      parseTime,
+      pct,
+      fixableErrorCount,
+      fixableWarningCount,
+    } = d;
+
+    // For files: all errors are fixable only if fixableErrorCount equals errorCount
+    const errorsFixable =
+      d.errorCount > 0 && fixableErrorCount === d.errorCount;
+    const warningsFixable =
+      d.warningCount > 0 && fixableWarningCount === d.warningCount;
+
     return {
       ...base,
       type: 'file',
@@ -125,9 +156,16 @@ export function toFlatEntry(node: HierarchyNode<NodeStats>): StatsRow {
       fixTime,
       parseTime,
       pct,
+      fixableErrorCount,
+      fixableWarningCount,
+      errorsFixable,
+      warningsFixable,
     };
   } else {
     const { totalTime, pct } = d;
+    // For rules, we don't have individual fixable counts from the current data structure
+    // This would need to be provided from the ESLint rule metadata
+    // For now, setting to false - this should be updated when rule fixable info is available
     return {
       ...base,
       type: 'rule',
@@ -135,6 +173,10 @@ export function toFlatEntry(node: HierarchyNode<NodeStats>): StatsRow {
       parent: node.parent?.data.identifier || '',
       totalTime,
       pct,
+      fixableErrorCount: 0,
+      fixableWarningCount: 0,
+      errorsFixable: false,
+      warningsFixable: false,
     };
   }
 }
@@ -154,6 +196,8 @@ export function buildHierarchy(
     rulesTime: sum(tree, (f) => f.rulesTime),
     fixTime: sum(tree, (f) => f.fixTime),
     parseTime: sum(tree, (f) => f.parseTime),
+    fixableErrorCount: sum(tree, (f) => f.fixableErrorCount),
+    fixableWarningCount: sum(tree, (f) => f.fixableWarningCount),
     children: tree,
   };
 

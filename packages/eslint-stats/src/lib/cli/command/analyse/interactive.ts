@@ -32,7 +32,8 @@ import { createInteractiveOptions } from './utils';
 import { processEslintResults } from '../../../parse';
 import { computeTotals } from '../../../parse/eslint-result-visitor';
 import { RootStatsNode } from '../../../parse/eslint-result-visitor';
-import theme from '../../../stats/theme';
+import { formatTotalsLine, TotalsData } from '../../../stats/format';
+import { createInfoExplanation } from './info.screen';
 
 export function handleGlobalActions(
   key: string,
@@ -41,6 +42,9 @@ export function handleGlobalActions(
 ) {
   if (state.lastAction === 'write' && state.outputPath) {
     handleWriteAction(state, state.outputPath, state.file, processedStats);
+  }
+  if (state.lastAction === 'info') {
+    return handleInfoAction(state, processedStats);
   }
   switch (key) {
     case CTRL_C:
@@ -155,26 +159,29 @@ export function updateStateOnKeyPress(
         };
       }
       return state;
+    case 'i':
+    case 'I':
+      return {
+        ...newState,
+        lastAction: 'info',
+      };
     default:
       return state;
   }
 }
 
 // Type-safe mapping functions
+const sortFieldMap = {
+  time: 'totalTime',
+  error: 'errorCount',
+  warning: 'warningCount',
+  identifier: 'identifier',
+} as const;
+
 function mapSortByOptionToField(
   option: SortByOption
-): 'totalTime' | 'errorCount' {
-  switch (option) {
-    case 'time':
-      return 'totalTime';
-    case 'violations':
-      return 'errorCount';
-    default: {
-      // This should never happen due to exhaustive checking
-      const _exhaustive: never = option;
-      throw new Error(`Unhandled sort option: ${_exhaustive}`);
-    }
-  }
+): 'totalTime' | 'errorCount' | 'warningCount' | 'identifier' {
+  return sortFieldMap[option];
 }
 
 function mapGroupByOptionToViewName(
@@ -226,7 +233,7 @@ export function handleWriteAction(
   } else {
     const analyzedFileName = path.basename(analyzedFilePath);
     const totalStatsLine = processedStats
-      ? ansis.strip(createTotalStatsLine(processedStats))
+      ? ansis.strip(createTotalStatsLine(processedStats, state))
       : '';
     const fileHeader = `# Eslint Stats Analysis\n\nFile: **${analyzedFileName}**\n\n${totalStatsLine}\n\n---\n\n${newContent}`;
     contentToAppend = fileHeader;
@@ -278,87 +285,37 @@ function setupStdin(onData: (key: string) => void, onExit: () => void) {
   });
 }
 
-function createTotalStatsLine(processedStats: RootStatsNode): string {
+function createTotalStatsLine(
+  processedStats: RootStatsNode,
+  state?: InteractiveCommandState
+): string {
   const totals = computeTotals(processedStats.children);
+  const currentView = state ? groupByOptions[state.groupByIndex] : 'rule';
+  const filePath = state ? state.file : undefined;
+  const decodedCommand = processedStats.decodedCommand;
 
-  const formatTime = (time: number) => {
-    if (time >= 1000) return `${(time / 1000).toFixed(2)}s`;
-    return `${time.toFixed(2)}ms`;
-  };
-
-  const formatCount = (
-    count: number,
-    isError = false,
-    isWarning = false,
-    isFixable = false
-  ) => {
-    if (count === 0) return theme.text.dim(count.toString());
-    if (isError) return ansis.bold.red(count.toString());
-    if (isWarning) return ansis.bold.yellow(count.toString());
-    if (isFixable) return ansis.bold(theme.text.file(count.toString())); // Use bold file color (green) for fixable
-    return count.toString();
-  };
-
-  // Calculate other time (total - parse - rules - fix)
-  const otherTime = Math.max(
-    0,
-    totals.totalTime - totals.parseTime - totals.rulesTime - totals.fixTime
+  return formatTotalsLine(
+    totals as TotalsData,
+    currentView,
+    filePath,
+    decodedCommand
   );
-
-  // Group stats logically with colors and spacing - match table theme
-  const fileStats = `${theme.icons.file} ${ansis.bold(
-    theme.text.file(totals.fileCount)
-  )} files`;
-  const ruleStats = `${theme.icons.rule} ${ansis.bold(
-    theme.text.rule(totals.ruleCount)
-  )} rules`;
-  const timeStats = `${theme.icons.time} ${ansis.bold.blue(
-    formatTime(totals.totalTime)
-  )} ${theme.text.dim(`(parse: `)}${theme.text.file(
-    formatTime(totals.parseTime)
-  )}${theme.text.dim(`, rules: `)}${theme.text.rule(
-    formatTime(totals.rulesTime)
-  )}${theme.text.dim(`, fix: `)}${ansis.red(
-    formatTime(totals.fixTime)
-  )}${theme.text.dim(`, other: `)}${theme.text.dim(
-    formatTime(otherTime)
-  )}${theme.text.dim(`)`)}`;
-  const issueStats = `${theme.icons.error} ${formatCount(
-    totals.errorCount,
-    true
-  )} errors • ${theme.icons.warning} ${formatCount(
-    totals.warningCount,
-    false,
-    true
-  )} warnings`;
-  const fixStats =
-    totals.fixableErrorCount > 0 || totals.fixableWarningCount > 0
-      ? ` • ${theme.icons.fixable} ${formatCount(
-          totals.fixableErrorCount + totals.fixableWarningCount,
-          false,
-          false,
-          true
-        )} fixable`
-      : '';
-
-  // Split into two lines
-  const firstLine =
-    ansis.bold(`${theme.icons.total} Total: `) +
-    [fileStats, ruleStats, timeStats].join(' • ');
-  const secondLine = '         ' + issueStats + fixStats; // Indent to align with "Total: "
-
-  return firstLine + '\n' + secondLine;
 }
 
 export function startInteractiveSession(
-  detailedStats: ESLint.LintResult[],
+  processedStats: RootStatsNode,
   state: InteractiveCommandState
 ): void {
-  const processedStats = processEslintResults(detailedStats);
-
   const renderScreen = (state: InteractiveCommandState) => {
+    // If showing info, render info screen instead of table
+    if (state.lastAction === 'info') {
+      const infoExplanation = createInfoExplanation(state, processedStats);
+      return [createInteractiveOptions(state), '', infoExplanation];
+    }
+
+    // Normal table rendering
     const tableOptions = convertInteractiveStateToViewOptions(state);
-    const totalStatsLine = createTotalStatsLine(processedStats);
+    const totalStatsLine = createTotalStatsLine(processedStats, state);
     return [
       createInteractiveOptions(state),
       '',
@@ -396,4 +353,17 @@ export function reprintSection(newTexts: string[]): void {
 
   const output = newTexts.join('\n');
   process.stdout.write(output);
+}
+
+function handleInfoAction(
+  state: InteractiveCommandState,
+  processedStats: RootStatsNode
+): InteractiveCommandState {
+  const explanation = createInfoExplanation(state, processedStats);
+
+  return {
+    ...state,
+    lastAction: undefined,
+    notification: explanation,
+  };
 }

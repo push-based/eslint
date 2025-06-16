@@ -42,6 +42,7 @@ export interface FileStatsNode extends CoreStats {
   fatalErrorCount: number;
   fixableErrorCount: number;
   fixableWarningCount: number;
+  fixableCount: number;
   fixPasses: number;
   rulesTime: number;
   fixTime: number;
@@ -53,6 +54,9 @@ export interface FileStatsNode extends CoreStats {
 export interface RootStatsNode {
   type: 'root';
   children: FileStatsNode[];
+  date?: Date;
+  decodedCommand?: string;
+  filePath?: string;
 }
 
 // 3. StatsTreeNode union no longer includes root
@@ -91,21 +95,30 @@ export interface EslintResultVisitor {
 }
 
 export function computeTotals(files: FileStatsNode[]): StatsTotals {
+  // Collect unique rule identifiers across all files
+  const uniqueRules = new Set<string>();
+  files.forEach((file) => {
+    file.children.forEach((rule) => {
+      uniqueRules.add(rule.identifier);
+    });
+  });
+
   return {
     fileCount: files.length,
-    ruleCount: sum(files, (f) => f.children.length),
-    // Properties from SumableFields (automatically derived from FileStatsNode)
-    errorCount: sum(files, (f) => f.errorCount),
-    warningCount: sum(files, (f) => f.warningCount),
+    ruleCount: uniqueRules.size,
+    // Times
     totalTime: sum(files, (f) => f.totalTime),
+    filesTime: sum(files, (f) => f.totalTime),
     rulesTime: sum(files, (f) => f.rulesTime),
     parseTime: sum(files, (f) => f.parseTime),
     fixTime: sum(files, (f) => f.fixTime),
     fixPasses: sum(files, (f) => f.fixPasses),
-    // Additional computed fields
-    filesTime: sum(files, (f) => f.totalTime),
-    fileErrorCount: sum(files, (f) => f.fatalErrorCount),
+    // Violations
+    errorCount: sum(files, (f) => f.errorCount),
     fixableErrorCount: sum(files, (f) => f.fixableErrorCount),
+    fixableCount: sum(files, (f) => f.fixableCount),
+    fileErrorCount: sum(files, (f) => f.fatalErrorCount),
+    warningCount: sum(files, (f) => f.warningCount),
     fixableWarningCount: sum(files, (f) => f.fixableWarningCount),
   };
 }

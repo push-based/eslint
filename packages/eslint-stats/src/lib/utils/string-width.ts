@@ -8,6 +8,8 @@ export const stripAnsi = (str: string): string => {
   return str.replace(/\u001b\[[0-9;]*m/g, '');
 };
 
+// @TODO use 3rd party for string width
+
 /**
  * Check if a Unicode character is wide (takes 2 columns in terminal)
  * This covers CJK characters, emojis, and other wide symbols
@@ -32,8 +34,9 @@ export function isWideCharacter(code: number): boolean {
 function getEmojiWidth(char: string): number {
   switch (char) {
     case '📁': // folder
+    case '📄': // page facing up
     case '⚙️': // gear (might include variation selector)
-    case '⚡': // lightning
+    case '⏱': // clock
     case '🚨': // rotating light
     case '⚠️': // warning (might include variation selector)
     case '🔧': // wrench

@@ -13,16 +13,11 @@ export const measureCommand: CommandModule<object, MeasureArgs> = {
         type: 'string',
         array: true,
       })
-      .group(['config', 'output-file', 'quiet', 'help'], 'ESLint Options:')
+      .group(['config', 'quiet', 'help'], 'ESLint Options:')
       .option('config', {
         describe: 'Path to the ESLint config file.',
         type: 'string',
         alias: 'c',
-      })
-      .option('output-file', {
-        describe: 'File to write the ESLint output to.',
-        type: 'string',
-        alias: 'o',
       })
       .group(['file-output', 'show'], 'Stats Options:')
       .option('file-output', {
@@ -45,8 +40,8 @@ export const measureCommand: CommandModule<object, MeasureArgs> = {
         'Lint all TypeScript files in the src directory.'
       )
       .example(
-        '$0 measure "src/**/*.ts" --config ./.eslintrc.ci.js --output-file eslint-report.json',
-        'Lint files with a specific config and output format.'
+        '$0 measure "src/**/*.ts" --config ./.eslintrc.ci.js',
+        'Lint files with a specific config.'
       )
       .example(
         '$0 measure nx run project-name:lint',

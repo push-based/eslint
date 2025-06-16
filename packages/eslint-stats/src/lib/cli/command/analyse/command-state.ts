@@ -1,11 +1,16 @@
 export const groupByOptions = ['rule', 'file', 'file-rule'] as const;
-export const sortByOptions = ['time', 'violations'] as const;
+export const sortByOptions = [
+  'time',
+  'error',
+  'warning',
+  'identifier',
+] as const;
 
 export type GroupByOption = (typeof groupByOptions)[number];
 export type SortByOption = (typeof sortByOptions)[number];
 
 type SortOrder = 'asc' | 'desc';
-type Action = 'group' | 'sort' | 'order' | 'rows' | 'write' | 'layer';
+type Action = 'group' | 'sort' | 'order' | 'rows' | 'write' | 'layer' | 'info';
 
 export interface InteractiveCommandState {
   groupByIndex: number;

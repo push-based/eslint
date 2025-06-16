@@ -3,8 +3,8 @@ import { max } from 'd3-array';
 import {
   formatTimeColored,
   formatPercentageColored,
-  formatErrorCount,
-  formatWarningCount,
+  formatErrorCountWithFixable,
+  formatWarningCountWithFixable,
   formatFilePath,
   formatRuleId,
 } from './format';
@@ -27,7 +27,7 @@ function formatIdentifier(e: StatsRow, header: string): string {
   const base =
     header === 'Rule' || e.depth === 1
       ? formatRuleId(e.identifier)
-      : formatFilePath(e.identifier);
+      : formatFilePath(e.identifier, 25);
   return '  '.repeat(e.depth) + base;
 }
 
@@ -89,8 +89,12 @@ function formatRow(
     id,
     tcell,
     formatPercentageColored(e.pct, maxes.pct),
-    formatErrorCount(e.errorCount, maxes.err),
-    formatWarningCount(e.warningCount, maxes.warn),
+    formatErrorCountWithFixable(e.errorCount, e.errorsFixable, maxes.err),
+    formatWarningCountWithFixable(
+      e.warningCount,
+      e.warningsFixable,
+      maxes.warn
+    ),
   ];
 }
 
@@ -106,11 +110,17 @@ const VIEWS: Record<string, ViewConfig> = {
   rule: {
     filter: (r: StatsRow) => r.depth === 1,
     label: 'Rule',
-    transform: (rows: StatsRow[], totalTime: number) =>
-      rows.map((r: StatsRow) => ({
+    transform: (rows: StatsRow[], totalTime: number) => {
+      // First filter to get only rule rows
+      const ruleRows = rows.filter((r): r is RuleRow => r.depth === 1);
+      // Aggregate rules by identifier
+      const aggregatedRules = aggregateRulesByIdentifier(ruleRows);
+      // Calculate percentages based on total time
+      return aggregatedRules.map((r: StatsRow) => ({
         ...r,
         pct: totalTime > 0 ? (r.totalTime / totalTime) * 100 : 0,
-      })),
+      }));
+    },
   },
   file: {
     filter: (r: StatsRow) => r.depth === 0,
@@ -132,6 +142,34 @@ function limitEntries(
 ): StatsRow[] {
   const [limit] = take;
   return limit > 0 ? entries.slice(0, limit) : entries;
+}
+
+/**
+ * Aggregates rule entries by identifier, summing up their stats
+ * @param ruleRows Array of rule rows to aggregate
+ * @returns Array of aggregated rule rows
+ */
+function aggregateRulesByIdentifier(ruleRows: RuleRow[]): RuleRow[] {
+  const ruleMap = new Map<string, RuleRow>();
+
+  ruleRows.forEach((rule) => {
+    const existing = ruleMap.get(rule.identifier);
+    if (existing) {
+      // Aggregate the stats
+      existing.totalTime += rule.totalTime;
+      existing.errorCount += rule.errorCount;
+      existing.warningCount += rule.warningCount;
+      // Keep the depth and type consistent
+    } else {
+      // Create a new aggregated rule entry
+      ruleMap.set(rule.identifier, {
+        ...rule,
+        parent: 'aggregated', // Mark as aggregated
+      });
+    }
+  });
+
+  return Array.from(ruleMap.values());
 }
 
 // Pure table renderer for pre-formatted data - no sorting, no limiting
@@ -276,11 +314,11 @@ export function getTableHeaders(
   // Simplified approach: use emojis with consistent spacing
   const getFirstColumnHeader = () => {
     if (first === 'File') {
-      return `${theme.icons.file} ${first}${arrow('identifier')}`;
+      return `${theme.icons.files} ${first}${arrow('identifier')}`;
     } else if (first === 'Rule') {
       return `${theme.icons.rule}  ${first}${arrow('identifier')}`;
     } else if (first === `File → ${theme.icons.rule} Rule`) {
-      return `${theme.icons.file} ${first}${arrow('identifier')}`;
+      return `${theme.icons.files} ${first}${arrow('identifier')}`;
     }
     return `${first}${arrow('identifier')}`;
   };
