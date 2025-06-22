@@ -21,7 +21,6 @@ export interface BaseStats {
 // Display stats with time information
 export interface DisplayStatsWithTime extends BaseStats {
   totalTime: number;
-  pct: number;
 }
 
 // 1. Unified CoreStats with consistent naming
@@ -30,7 +29,6 @@ export interface CoreStats {
   errorCount: number;
   warningCount: number;
   totalTime: number;
-  timePct: number;
 }
 
 export interface RuleStatsNode extends CoreStats {
@@ -69,7 +67,7 @@ type NumericFields<T> = {
 
 type SumableFields = Exclude<
   NumericFields<FileStatsNode>,
-  'fatalErrorCount' | 'fixableErrorCount' | 'fixableWarningCount' | 'timePct'
+  'fatalErrorCount' | 'fixableErrorCount' | 'fixableWarningCount'
 >;
 
 export interface StatsTotals extends Pick<FileStatsNode, SumableFields> {

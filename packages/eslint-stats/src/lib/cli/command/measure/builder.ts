@@ -3,27 +3,18 @@ import type { MeasureArgs } from './types';
 import { handler } from './handler';
 
 export const measureCommand: CommandModule<object, MeasureArgs> = {
-  command: 'measure [args...]',
+  command: 'measure [eslintCommandAndArgs...]',
   describe: 'Run eslint on a given set of files and measure the performance.',
   builder: (yargs: Argv): Argv<MeasureArgs> => {
     return yargs
-      .positional('args', {
+      .positional('eslintCommandAndArgs', {
         describe:
           'Arguments to pass to ESLint or a command that runs eslint (e.g. nx run my-app:lint). If not provided, it will run eslint on the current directory.',
         type: 'string',
         array: true,
       })
-      .group(['config', 'quiet', 'help'], 'ESLint Options:')
-      .option('config', {
-        describe: 'Path to the ESLint config file.',
-        type: 'string',
-        alias: 'c',
-      })
-      .group(['file-output', 'show'], 'Stats Options:')
-      .option('file-output', {
-        describe: 'File to write the stats to.',
-        type: 'string',
-      })
+      .group(['help'], 'ESLint Options:')
+      .group(['show'], 'Stats Options:')
       .option('show', {
         describe: 'Show the stats report after running the command.',
         type: 'boolean',

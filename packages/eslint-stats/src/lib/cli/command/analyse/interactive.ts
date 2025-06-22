@@ -16,7 +16,6 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { ESLint } from 'eslint';
 import {
   renderInteractiveEsLintStatsView,
   EslintStatsViewOptions,
@@ -29,11 +28,28 @@ import {
   GroupByOption,
 } from './command-state';
 import { createInteractiveOptions } from './utils';
-import { processEslintResults } from '../../../parse';
 import { computeTotals } from '../../../parse/eslint-result-visitor';
 import { RootStatsNode } from '../../../parse/eslint-result-visitor';
-import { formatTotalsLine, TotalsData } from '../../../stats/format';
+import {
+  formatTotalsLine,
+  TotalsData,
+  formatCommand,
+} from '../../../stats/format';
 import { createInfoExplanation } from './info.screen';
+import theme from '../../../stats/theme';
+
+/**
+ * Creates a divider line that matches the length of the given text
+ * @param text The text to measure (with ANSI codes stripped)
+ * @returns A themed divider line matching the text length
+ */
+function createDividerForText(text: string): string {
+  const strippedLength = ansis.strip(text).length;
+  const pattern = '─┄';
+  const repetitions = Math.ceil(strippedLength / pattern.length);
+  const divider = pattern.repeat(repetitions).substring(0, strippedLength);
+  return theme.text.border(divider);
+}
 
 export function handleGlobalActions(
   key: string,
@@ -223,19 +239,33 @@ export function handleWriteAction(
     processedStats
   );
 
-  const newContent = `${ansis.strip(stateDescription)}\n\n${ansis.strip(
-    tableContent.join('\n')
-  )}`;
+  // Get command and totals separately for consistent ordering
+  const commandLine = processedStats.decodedCommand
+    ? formatCommand(processedStats.decodedCommand)
+    : null;
+  const totalsOnly = createTotalStatsLineWithoutCommand(processedStats, state);
+
+  // Build content with consistent ordering: command, state, totals, table
+  const contentParts = [];
+  if (commandLine) {
+    contentParts.push(ansis.strip(commandLine));
+    contentParts.push(''); // Empty line after command
+  }
+  contentParts.push(ansis.strip(stateDescription));
+  contentParts.push(''); // Empty line after state
+  contentParts.push(ansis.strip(createDividerForText(totalsOnly)));
+  contentParts.push(ansis.strip(totalsOnly));
+  contentParts.push(ansis.strip(createDividerForText(totalsOnly)));
+  contentParts.push(ansis.strip(tableContent.join('\n')));
+
+  const newContent = contentParts.join('\n');
   let contentToAppend: string;
 
   if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 0) {
     contentToAppend = `\n\n---\n\n${newContent}`;
   } else {
     const analyzedFileName = path.basename(analyzedFilePath);
-    const totalStatsLine = processedStats
-      ? ansis.strip(createTotalStatsLine(processedStats, state))
-      : '';
-    const fileHeader = `# Eslint Stats Analysis\n\nFile: **${analyzedFileName}**\n\n${totalStatsLine}\n\n---\n\n${newContent}`;
+    const fileHeader = `# Eslint Stats Analysis\n\nFile: **${analyzedFileName}**\n\n---\n\n${newContent}`;
     contentToAppend = fileHeader;
   }
 
@@ -285,20 +315,20 @@ function setupStdin(onData: (key: string) => void, onExit: () => void) {
   });
 }
 
-function createTotalStatsLine(
+function createTotalStatsLineWithoutCommand(
   processedStats: RootStatsNode,
   state?: InteractiveCommandState
 ): string {
   const totals = computeTotals(processedStats.children);
   const currentView = state ? groupByOptions[state.groupByIndex] : 'rule';
   const filePath = state ? state.file : undefined;
-  const decodedCommand = processedStats.decodedCommand;
 
+  // Pass undefined for decodedCommand to exclude it from the totals line
   return formatTotalsLine(
     totals as TotalsData,
     currentView,
     filePath,
-    decodedCommand
+    undefined
   );
 }
 
@@ -313,16 +343,41 @@ export function startInteractiveSession(
       return [createInteractiveOptions(state), '', infoExplanation];
     }
 
-    // Normal table rendering
+    // Normal table rendering - reordered to match user's preferred layout
     const tableOptions = convertInteractiveStateToViewOptions(state);
-    const totalStatsLine = createTotalStatsLine(processedStats, state);
-    return [
-      createInteractiveOptions(state),
-      '',
-      totalStatsLine,
-      '',
-      ...renderInteractiveEsLintStatsView(tableOptions, processedStats),
-    ];
+
+    // Split command from totals if present
+    const commandLine = processedStats.decodedCommand
+      ? formatCommand(processedStats.decodedCommand)
+      : null;
+
+    // Get totals without command (pass undefined for decodedCommand)
+    const totalsOnly = createTotalStatsLineWithoutCommand(
+      processedStats,
+      state
+    );
+
+    const elements = [];
+
+    if (commandLine) {
+      elements.push(commandLine);
+      elements.push(''); // Empty line after command
+    }
+
+    elements.push(createInteractiveOptions(state));
+    elements.push(''); // Empty line after controls
+
+    elements.push(createDividerForText(totalsOnly));
+
+    elements.push(totalsOnly);
+
+    elements.push(createDividerForText(totalsOnly));
+
+    elements.push(
+      ...renderInteractiveEsLintStatsView(tableOptions, processedStats)
+    );
+
+    return elements;
   };
 
   setupStdin(

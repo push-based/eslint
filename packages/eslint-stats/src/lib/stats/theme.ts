@@ -50,7 +50,6 @@ const scales = {
   warnScale: clampedScale(interpolateYlOrBr, [0.3, 0.7]),
 };
 
-const fmt1p = format('.1%'); // e.g. "12.3%"
 const fmtSI = format('.1s'); // auto SI prefix (ms → s)
 
 function fmtSIPrefix(v: number /* ms */) {
@@ -90,13 +89,6 @@ const metrics = {
     scale: scales.timeScale,
     color: text.info,
     formatter: fmtSIPrefix,
-  },
-  percentage: {
-    icon: '%',
-    unit: '%',
-    scale: scales.timeScale,
-    color: text.info,
-    formatter: (v: number) => fmt1p(v / 100),
   },
   errors: {
     icon: icons.error,

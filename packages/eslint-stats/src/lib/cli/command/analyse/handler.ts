@@ -14,7 +14,13 @@ import {
 import * as path from 'path';
 import { computeTotals } from '../../../parse/eslint-result-visitor';
 import { RootStatsNode } from '../../../parse/eslint-result-visitor';
-import { formatTotalsLine, TotalsData } from '../../../stats/format';
+import {
+  formatTotalsLine,
+  TotalsData,
+  formatCommand,
+} from '../../../stats/format';
+import theme from '../../../stats/theme';
+import ansis from 'ansis';
 
 function initInteractiveState(argv: AnalyseArgs): InteractiveCommandState {
   const take = argv.take?.map((n: number | string) => Number(n)) ?? [10];
@@ -81,20 +87,32 @@ function convertInteractiveStateToEslintStatsViewState(
   };
 }
 
-function createTotalStatsLine(
+function createTotalStatsLineWithoutCommand(
   processedStats: RootStatsNode,
   state?: InteractiveCommandState
 ): string {
   const totals = computeTotals(processedStats.children);
   const currentView = state ? groupByOptions[state.groupByIndex] : 'rule';
-  const decodedCommand = processedStats.decodedCommand;
 
   return formatTotalsLine(
     totals as TotalsData,
     currentView,
     undefined,
-    decodedCommand
+    undefined
   );
+}
+
+/**
+ * Creates a divider line that matches the length of the given text
+ * @param text The text to measure (with ANSI codes stripped)
+ * @returns A themed divider line matching the text length
+ */
+function createDividerForText(text: string): string {
+  const strippedLength = ansis.strip(text).length;
+  const pattern = '─┄';
+  const repetitions = Math.ceil(strippedLength / pattern.length);
+  const divider = pattern.repeat(repetitions).substring(0, strippedLength);
+  return theme.text.border(divider);
 }
 
 export async function analyseHandler(argv: AnalyseArgs): Promise<void> {
@@ -122,10 +140,22 @@ export async function analyseHandler(argv: AnalyseArgs): Promise<void> {
         detailedStats
       );
 
-      // Add total stats line before the table
-      const totalStatsLine = createTotalStatsLine(detailedStats, state);
-      console.log(totalStatsLine);
-      console.log('');
+      // Use consistent ordering: command, then totals (without command), then table
+      const commandLine = detailedStats.decodedCommand
+        ? formatCommand(detailedStats.decodedCommand)
+        : null;
+      const totalsOnly = createTotalStatsLineWithoutCommand(
+        detailedStats,
+        state
+      );
+
+      if (commandLine) {
+        console.log(commandLine);
+        console.log('');
+      }
+      console.log(createDividerForText(totalsOnly));
+      console.log(totalsOnly);
+      console.log(createDividerForText(totalsOnly));
       console.log(result.join('\n'));
       return;
     }

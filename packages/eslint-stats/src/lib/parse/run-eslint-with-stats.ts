@@ -169,7 +169,7 @@ export function objectToCliArgs<
     const prefix = key.length === 1 ? '-' : '--';
     // "-*" arguments (shorthands)
     if (Array.isArray(value)) {
-      return value.map((v) => `${prefix}${key}="${v}"`);
+      return value.map((v) => `${prefix}${key}=${v}`);
     }
     // "--*" arguments ==========
 
@@ -181,7 +181,7 @@ export function objectToCliArgs<
     }
 
     if (typeof value === 'string') {
-      return [`${prefix}${key}="${value}"`];
+      return [`${prefix}${key}=${value}`];
     }
 
     if (typeof value === 'number') {

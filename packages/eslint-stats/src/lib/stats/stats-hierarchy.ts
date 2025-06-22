@@ -32,7 +32,6 @@ export type RootData = {
   totalTime: number;
   errorCount: number;
   warningCount: number;
-  pct: number;
   rulesTime: number;
   fixTime: number;
   parseTime: number;
@@ -98,11 +97,8 @@ export function buildTree(
         errorCount,
         warningCount,
         totalTime: ruleTime,
-        pct: totalTime > 0 ? (ruleTime / totalTime) * 100 : 0,
       };
     });
-
-    const pct = grandTotal > 0 ? (totalTime / grandTotal) * 100 : 0;
 
     return {
       type: 'file',
@@ -115,7 +111,6 @@ export function buildTree(
       parseTime,
       fixableErrorCount,
       fixableWarningCount,
-      pct,
       children,
     };
   });
@@ -135,7 +130,6 @@ export function toFlatEntry(node: HierarchyNode<NodeStats>): StatsRow {
       rulesTime,
       fixTime,
       parseTime,
-      pct,
       fixableErrorCount,
       fixableWarningCount,
     } = d;
@@ -155,14 +149,13 @@ export function toFlatEntry(node: HierarchyNode<NodeStats>): StatsRow {
       rulesTime,
       fixTime,
       parseTime,
-      pct,
       fixableErrorCount,
       fixableWarningCount,
       errorsFixable,
       warningsFixable,
     };
   } else {
-    const { totalTime, pct } = d;
+    const { totalTime } = d;
     // For rules, we don't have individual fixable counts from the current data structure
     // This would need to be provided from the ESLint rule metadata
     // For now, setting to false - this should be updated when rule fixable info is available
@@ -172,7 +165,6 @@ export function toFlatEntry(node: HierarchyNode<NodeStats>): StatsRow {
       depth: 1,
       parent: node.parent?.data.identifier || '',
       totalTime,
-      pct,
       fixableErrorCount: 0,
       fixableWarningCount: 0,
       errorsFixable: false,
@@ -192,7 +184,6 @@ export function buildHierarchy(
     totalTime: grandTotal,
     errorCount: sum(tree, (f) => f.errorCount),
     warningCount: sum(tree, (f) => f.warningCount),
-    pct: 100,
     rulesTime: sum(tree, (f) => f.rulesTime),
     fixTime: sum(tree, (f) => f.fixTime),
     parseTime: sum(tree, (f) => f.parseTime),

@@ -60,7 +60,6 @@ export function formatRuleId(ruleId: string): string {
 
 // Use the shared theme formatters directly
 export const formatTimeColored = theme.formatters.time;
-export const formatPercentageColored = theme.formatters.percentage;
 export const formatErrorCount = theme.formatters.errors;
 export const formatWarningCount = theme.formatters.warnings;
 
@@ -111,6 +110,15 @@ export function formatWarningCountWithFixable(
 export function formatTime(time: number): string {
   const fmtSI = format('.1s');
   return fmtSI(time / 1000) + 's';
+}
+
+/**
+ * Formats time in raw milliseconds for consistent units
+ * @param time Time in milliseconds
+ * @returns Formatted time string in milliseconds
+ */
+export function formatTimeMs(time: number): string {
+  return Math.round(time).toString();
 }
 
 /**
@@ -206,7 +214,6 @@ export function formatTotalsLine(
   decodedCommand?: string
 ): string {
   const sparkline = createTotalsSparkline(totals);
-  const percentPart = formatPercentPart(totals);
   const errorPart = formatErrorPart(totals);
   const warningPart = formatWarningPart(totals);
 
@@ -218,19 +225,19 @@ export function formatTotalsLine(
 
   switch (viewType) {
     case 'rule': {
-      const ruleStats = formatRuleStats(totals, percentPart);
+      const ruleStats = formatRuleStats(totals);
       return prefix + ruleStats + errorPart + warningPart;
     }
 
     case 'file': {
       const timePart = formatTimePart(totals, sparkline);
-      const fileStats = formatFileStats(totals, percentPart);
+      const fileStats = formatFileStats(totals);
       return prefix + fileStats + timePart + errorPart + warningPart;
     }
 
     case 'file-rule': {
       const timePart = formatTimePart(totals, sparkline);
-      const fileRuleStats = formatFileRuleStats(totals, percentPart);
+      const fileRuleStats = formatFileRuleStats(totals);
       return prefix + fileRuleStats + timePart + errorPart + warningPart;
     }
 
@@ -250,11 +257,16 @@ export function formatTimePart(totals: TotalsData, sparkline: string): string {
     0,
     totals.totalTime - totals.rulesTime - totals.fixTime - totals.parseTime
   );
-  return ` · ${theme.text.file(formatTime(totals.parseTime))}/${theme.text.rule(
-    formatTime(totals.rulesTime)
-  )}/${ansis.red(formatTime(totals.fixTime))}/${theme.text.secondary(
-    formatTime(otherTime)
-  )} ${sparkline}`;
+
+  // New format: sparkline first, then breakdown with consistent ms units
+  const breakdown = [
+    theme.text.file(formatTimeMs(totals.parseTime)),
+    theme.text.rule(formatTimeMs(totals.rulesTime)),
+    ansis.red(formatTimeMs(totals.fixTime)),
+    theme.text.secondary(formatTimeMs(otherTime)),
+  ].join('/');
+
+  return ` · ${sparkline.trim()} ${breakdown} ms`;
 }
 
 /**
@@ -298,63 +310,38 @@ export function formatWarningPart(totals: TotalsData): string {
 }
 
 /**
- * Formats the rules time percentage part
- * @param totals The totals data
- * @returns Formatted percentage part string
- */
-export function formatPercentPart(totals: TotalsData): string {
-  const rulesTimePercent =
-    totals.totalTime > 0
-      ? ((totals.rulesTime / totals.totalTime) * 100).toFixed(1)
-      : '0.0';
-  return `(${ansis.bold.blue(rulesTimePercent)}%)`;
-}
-
-/**
  * Formats the rule view stats part
  * @param totals The totals data
- * @param percentPart The formatted percentage part
  * @returns Formatted rule stats string
  */
-export function formatRuleStats(
-  totals: TotalsData,
-  percentPart: string
-): string {
+export function formatRuleStats(totals: TotalsData): string {
   return `⚙️ ${ansis.bold(
     theme.text.rule(totals.ruleCount)
-  )} · ⏱ ${ansis.bold.blue(formatTime(totals.totalTime))} ${percentPart}`;
+  )} · ⏱ ${ansis.bold.blue(formatTimeMs(totals.totalTime))} ms`;
 }
 
 /**
  * Formats the file view stats part
  * @param totals The totals data
- * @param percentPart The formatted percentage part
  * @returns Formatted file stats string
  */
-export function formatFileStats(
-  totals: TotalsData,
-  percentPart: string
-): string {
+export function formatFileStats(totals: TotalsData): string {
   return `${theme.icons.file} ${ansis.bold(
     theme.text.file(totals.fileCount)
-  )} · ⏱ ${ansis.bold.blue(formatTime(totals.totalTime))} ${percentPart}`;
+  )} · ⏱ ${ansis.bold.blue(formatTimeMs(totals.totalTime))} ms`;
 }
 
 /**
  * Formats the file-rule view stats part
  * @param totals The totals data
- * @param percentPart The formatted percentage part
  * @returns Formatted file-rule stats string
  */
-export function formatFileRuleStats(
-  totals: TotalsData,
-  percentPart: string
-): string {
+export function formatFileRuleStats(totals: TotalsData): string {
   return `${theme.icons.file} ${ansis.bold(
     theme.text.file(totals.fileCount)
   )} · ⚙️ ${ansis.bold(
     theme.text.rule(totals.ruleCount)
-  )} · ⏱ ${ansis.bold.blue(formatTime(totals.totalTime))} ${percentPart}`;
+  )} · ⏱ ${ansis.bold.blue(formatTimeMs(totals.totalTime))} ms`;
 }
 
 export function sparklineForFile(e: StatsRow): string | undefined {
@@ -375,6 +362,5 @@ export function sparklineForFile(e: StatsRow): string | undefined {
     ],
   });
 
-  // Pad sparkline to ensure consistent alignment - sparkline is 4 chars, pad to 6 total width
-  return sparkline.padEnd(6, ' ');
+  return sparkline;
 }
