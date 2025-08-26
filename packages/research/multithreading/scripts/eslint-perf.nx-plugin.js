@@ -55,7 +55,7 @@ const createNodesV2 = [
                                         command: buildEslintCommand({
                                             eslintVersion,
                                             maxWarnings,
-                                            config,
+                                            config: `${projectRoot}/${configFile}`,
                                             patterns
                                         }),
                                     },
@@ -78,7 +78,7 @@ const createNodesV2 = [
 
 const plugin = {
     createNodesV2,
-    name: 'eslint-benchmark-target',
+    name: 'eslint-benchmark-targets',
 }
 
 export default plugin;

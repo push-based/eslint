@@ -59,6 +59,9 @@ I will also add my measures as example output. If I have enough cross-checks, I 
 
 ### Benchmarking the different eslint versions `8.57.0`, `9.34.0` (default behavior)
 
+**Setup:**
+1. Add benchmark script to `tools/eslint-perf.bench.js`
+
 **Command:**
 
 ```bash
@@ -96,6 +99,9 @@ System: darwin arm64 (23.3.0) | 12 cores | 32 GB | Node.js v24.1.0
 ```
 
 ### Benchmarking the `--concurrency` option in Eslint v9.34+
+
+**Setup:**
+1. Add benchmark script to `tools/eslint-perf.bench.js`
 
 **Command:**
 
@@ -505,13 +511,13 @@ _nx.json_
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "plugins": [
     {
-      "plugin": "./tools/src/eslint-concurrency-target/eslint-concurrency-target.plugin.js",
+      "plugin": "./tools/eslint-perf.nx-plugin.js",
       "options": {
         "eslintVersion": "9.34.0"
       }
     },
     {
-      "plugin": "./tools/src/eslint-concurrency-target/eslint-concurrency-target.plugin.js",
+      "plugin": "./tools/eslint-perf.nx-plugin.js",
       "options": {
         "eslintVersion": "8.57.0"
       }
