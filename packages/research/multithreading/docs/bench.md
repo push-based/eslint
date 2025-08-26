@@ -1,7 +1,7 @@
 # ESLint Concurrency Benchmark
 
 As a performance enthusiast I couldn't wait to try out the new [ESLint v9.34+ `--concurrency` option](https://eslint.org/blog/2024/06/eslint-v9.34.0-released/#new--concurrency-option) and see how it performs across different projects and concurrency settings.
-In the following, you will find all scripts I used as well as some explanation. 
+In the following, you will find all scripts I used as well as some explanation.
 I will also add my measures as example output. If I have enough cross-checks, I will aggregate a more official comparison.
 
 ## General setup
@@ -11,6 +11,7 @@ To have a comparable setup, I created a set of defaults and code targets that ar
 ### Environment Variables
 
 _.env_
+
 ```bash
 # == ESLINT ==
 
@@ -21,7 +22,7 @@ TIMING=15
 export NX_VERBOSE_LOGGING=false
 
 # == Nx ==
-# Many flags are shorthands and disable multiple other features. 
+# Many flags are shorthands and disable multiple other features.
 # The below settings are DO contain duplicates for clarity.
 
 # Disable Nx TUI
@@ -81,6 +82,7 @@ npx @push-based/cpu-prof@latest -- \
 ```
 
 What this does:
+
 - Starts ESLint with Node CPU profiling enabled and collects `.cpuprofile` files
 - Merges them into a single Chrome trace JSON for easy inspection `trace.json
 
@@ -96,9 +98,9 @@ root/
 
 ### DevToolsExample Output
 
-| 8.10.0  | 9.34 Concurreny off | 9.34 Concurreny 6 |
-| ------- | -------------- | ------------- |
-| ![8.10.0](../img/cpu-eslint-8.10.0.png)  | ![9.34 Concurreny off](../img/cpu-eslint-9.34-concurrency-off.png)        | ![9.34 Concurreny 6](../img/cpu-eslint-9.34-concurrency-6.png)       |
+| 8.10.0                                  | 9.34 Concurreny off                                                | 9.34 Concurreny 6                                              |
+| --------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------- |
+| ![8.10.0](../img/cpu-eslint-8.10.0.png) | ![9.34 Concurreny off](../img/cpu-eslint-9.34-concurrency-off.png) | ![9.34 Concurreny 6](../img/cpu-eslint-9.34-concurrency-6.png) |
 
 ## Benchmarking the different eslint versions (default behavior)
 
@@ -144,12 +146,12 @@ packages/lib-a
 Concurrency   Avg(s)    StdDev    Speedup   Mark
 ------------------------------------------------
 off           8.849     0.078     1.00x     ★
-1             9.024     0.094     0.98x     
-2             9.615     0.107     0.92x     
-4             9.742     0.190     0.91x     
-6             11.652    0.439     0.76x     
-8             13.749    0.195     0.64x     
-auto          9.490     0.095     0.93x     
+1             9.024     0.094     0.98x
+2             9.615     0.107     0.92x
+4             9.742     0.190     0.91x
+6             11.652    0.439     0.76x
+8             13.749    0.195     0.64x
+auto          9.490     0.095     0.93x
 ```
 
 ## Nx Plugin to apply in existing projects
@@ -157,15 +159,16 @@ auto          9.490     0.095     0.93x
 In any project, you can apply the following plugin to enable the `--concurrency` option.
 
 _plugin.js_
+
 ```ts
 import { dirname } from 'node:path';
 
 function buildEslintCommand({
-                              eslintVersion,
-                              maxWarnings = 0,
-                              patterns,
-                              config,
-                            }) {
+  eslintVersion,
+  maxWarnings = 0,
+  patterns,
+  config,
+}) {
   const eslintCmd = eslintVersion
     ? `npx -y eslint@${eslintVersion}`
     : 'npx eslint';
@@ -185,8 +188,10 @@ function buildEslintCommand({
 const createNodesV2 = [
   '**/project.json',
   async (projectConfigurationFiles, opts = {}, context) => {
-  
-    if (!Array.isArray(projectConfigurationFiles) || projectConfigurationFiles.length === 0) {
+    if (
+      !Array.isArray(projectConfigurationFiles) ||
+      projectConfigurationFiles.length === 0
+    ) {
       return [];
     }
 
@@ -216,11 +221,13 @@ const createNodesV2 = [
                       eslintVersion,
                       maxWarnings,
                       config,
-                      patterns
+                      patterns,
                     }),
                   },
                   metadata: {
-                    description: `Run eslint${eslintVersion ? `@${eslintVersion}` : ''}`,
+                    description: `Run eslint${
+                      eslintVersion ? `@${eslintVersion}` : ''
+                    }`,
                     technologies: ['eslint'],
                   },
                   cache: false,
@@ -229,7 +236,7 @@ const createNodesV2 = [
             },
           },
         };
-        
+
         return [projectConfigFile, result];
       })
     );
@@ -245,6 +252,7 @@ export default plugin;
 ```
 
 _nx.json_
+
 ```json
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
@@ -263,7 +271,6 @@ _nx.json_
     }
   ]
 }
-
 ```
 
 ## GitHub Actions
@@ -272,21 +279,20 @@ This is the GitHub Actions workflow that I used to benchmark the different eslin
 
 **Job Matrix `eslint-version-benchmark`:**
 
-|      Version/OS |  ubuntu-latest   |  windows-latest  |  macos-latest   |
-|----------------:|:----------------:|:----------------:|:---------------:|
-| `eslint@8.10.0` |        ✅         |        ✅         |        ✅        |
-| `eslint@9.34.0` |        ✅         |        ✅         |        ✅        |
+|      Version/OS | ubuntu-latest | windows-latest | macos-latest |
+| --------------: | :-----------: | :------------: | :----------: |
+| `eslint@8.10.0` |      ✅       |       ✅       |      ✅      |
+| `eslint@9.34.0` |      ✅       |       ✅       |      ✅      |
 
 **Job Matrix `eslint-concurrency-benchmark`:**
 
-|       Concurrency/OS |  ubuntu-latest   |  windows-latest  |  macos-latest   |
-|---------------------:|:----------------:|:----------------:|:---------------:|
-|  `--concurrency=off` |        ✅         |        ✅         |        ✅        |
-|    `--concurrency=2` |        ✅         |        ✅         |        ✅        |
-|    `--concurrency=4` |        ✅         |        ✅         |        ✅        |
-|    `--concurrency=6` |        ✅         |        ✅         |        ✅        |
-| `--concurrency=auto` |        ✅         |        ✅         |        ✅        |
-
+|       Concurrency/OS | ubuntu-latest | windows-latest | macos-latest |
+| -------------------: | :-----------: | :------------: | :----------: |
+|  `--concurrency=off` |      ✅       |       ✅       |      ✅      |
+|    `--concurrency=2` |      ✅       |       ✅       |      ✅      |
+|    `--concurrency=4` |      ✅       |       ✅       |      ✅      |
+|    `--concurrency=6` |      ✅       |       ✅       |      ✅      |
+| `--concurrency=auto` |      ✅       |       ✅       |      ✅      |
 
 ```yml
 name: ESLint Benchmarks

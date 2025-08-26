@@ -228,18 +228,3 @@ When you hit the enter key, the current stta is sent to a mark-down file. This i
   documentation.
 - [ESLint Timing](https://eslint.org/docs/latest/extend/stats#enable-stats-collection) - Usage instructions for the
   stats flag.
-
-Group: Rule
-
-⚙️ **3224** rules • ⚡ **89.00ms**
-🚨 **7** errors • ⚠️ **21** warnings • 🔧 **6** fixable
-
-Group: File
-
-📁 **52** files • ⚡ **278.63ms ▄▂▁▃** (parse: 110.65ms, rules: 89.00ms, fix: 0.00ms, other: 78.98ms)
-🚨 **7** errors • ⚠️ **21** warnings • 🔧 **6** fixable
-
-Group: File->Rule
-
-📁 **52** files • ⚙️ **3224** rules • ⚡ **278.63ms ▄▂▁▃** (parse: 110.65ms, rules: 89.00ms, fix: 0.00ms, other: 78.98ms)
-🚨 **7** errors • ⚠️ **21** warnings • 🔧 **6** fixable
