@@ -1,5 +1,5 @@
 export interface MeasureArgs {
-  args?: string[];
+  eslintCommandAndArgs?: string[];
   config?: string;
   outputFile?: string;
   fileOutput?: string;

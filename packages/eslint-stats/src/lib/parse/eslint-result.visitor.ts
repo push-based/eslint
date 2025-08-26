@@ -31,7 +31,11 @@ export function createProcessedTotalsTracker() {
 
 type ESLintResult = ESLint.LintResult;
 
-export function createProcessEslintResultVisitor(): EslintResultVisitor {
+export function createProcessEslintResultVisitor(
+  date?: Date,
+  decodedCommand?: string,
+  filePath?: string
+): EslintResultVisitor {
   const results: FileStatsNode[] = [];
   const totalsTracker = createProcessedTotalsTracker();
 
@@ -59,15 +63,29 @@ export function createProcessEslintResultVisitor(): EslintResultVisitor {
       return {
         type: 'root',
         children: [...results],
+        date,
+        decodedCommand,
+        filePath,
       };
     },
   };
 }
 
-export function processEslintResults(results: ESLintResult[]): RootStatsNode {
+export function processEslintResults(
+  results: ESLintResult[],
+  date?: Date,
+  decodedCommand?: string,
+  filePath?: string
+): RootStatsNode {
   // Create a simple visitor that just tracks files for totals calculation
-  const visitor = createProcessEslintResultVisitor();
+  const visitor = createProcessEslintResultVisitor(
+    date,
+    decodedCommand,
+    filePath
+  );
 
   // walkEslintResult now returns the RootStatsNode directly with rules populated in children
-  return walkEslintResult(results, visitor);
+  walkEslintResult(results, visitor);
+
+  return visitor.getResults();
 }

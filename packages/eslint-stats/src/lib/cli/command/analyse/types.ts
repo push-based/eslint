@@ -6,7 +6,9 @@ export enum group {
 
 export enum sort {
   time = 'time',
-  violations = 'violations',
+  error = 'error',
+  warning = 'warning',
+  identifier = 'identifier',
 }
 
 export enum sortDirection {

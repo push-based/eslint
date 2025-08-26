@@ -2,21 +2,13 @@ import ansis from 'ansis';
 import { scaleLinear, scaleSequential } from 'd3-scale';
 import {
   interpolateBlues,
-  interpolateOranges,
   interpolateReds,
+  interpolateYlOrBr,
 } from 'd3-scale-chromatic';
 import { RGBColor, color as d3color } from 'd3-color';
 import { format } from 'd3-format';
 
-// =============================================================================
-// TYPES
-// =============================================================================
-
 export type ColorScale = (value: number, max: number) => RGBColor;
-
-// =============================================================================
-// UTILITY FUNCTIONS
-// =============================================================================
 
 /**
  * Build "mid-tone" scales by clamping the domain to avoid extreme light/dark colors
@@ -35,103 +27,125 @@ function clampedScale(
   };
 }
 
-/**
- * Apply RGB color directly from RGBColor object
- */
 export function applyRgb(c: RGBColor, text: string): string {
   return ansis.rgb(c.r, c.g, c.b)(text);
 }
 
-// =============================================================================
-// SCALES - Built once and reused
-// =============================================================================
+function graded(
+  value: number,
+  max: number,
+  text: string,
+  zero: (s: string) => string,
+  high: (s: string) => string,
+  scale: ColorScale
+): string {
+  if (!value) return zero(text);
+  if (value === max) return high(text);
+  return applyRgb(scale(value, max), text);
+}
 
 const scales = {
-  timeScale: clampedScale(interpolateBlues),
-  errorScale: clampedScale(interpolateReds),
-  warnScale: clampedScale(interpolateOranges, [0.2, 0.6]),
+  timeScale: clampedScale(interpolateBlues, [0.4, 0.9]),
+  errorScale: clampedScale(interpolateReds, [0.4, 0.9]),
+  warnScale: clampedScale(interpolateYlOrBr, [0.3, 0.7]),
 };
 
-// =============================================================================
-// THEME CONFIGURATION
-// =============================================================================
+const fmtSI = format('.1s'); // auto SI prefix (ms → s)
 
-const fmt2 = format('.2f'); // e.g. "123.45"
-const fmt1p = format('.1%'); // e.g. "12.3%"
+function fmtSIPrefix(v: number /* ms */) {
+  return fmtSI(v / 1000) + 's';
+}
 
-// General text formatters
 const text = {
-  dim: ansis.dim.gray,
+  secondary: ansis.dim.gray,
+  bold: ansis.bold,
   file: ansis.green,
   rule: ansis.cyan,
   border: ansis.dim.gray,
+  header: ansis.bold.dim.gray,
+  sectionHeader: ansis.bold.gray,
+  label: ansis.yellow,
+  value: ansis.bold,
+  error: ansis.red,
+  warning: ansis.yellow,
+  info: ansis.blue,
 };
 
-// Icons used throughout the application
 const icons = {
-  total: '📊',
-  file: '📁',
+  stats: '📊',
+  file: '📄',
   rule: '⚙️',
-  time: '⚡',
+  time: '⏱',
   error: '🚨',
   warning: '⚠️',
   fixable: '🔧',
 } as const;
 
-// Metric formatters configuration
-const metricConfig = {
-  timeFmt: {
-    text: (v: number) => `${fmt2(v)} ms`,
-    zero: text.dim,
-    max: ansis.bold.blue,
+// Single source of truth for all metrics
+const metrics = {
+  time: {
+    icon: icons.time,
+    unit: 's',
     scale: scales.timeScale,
+    color: text.info,
+    formatter: fmtSIPrefix,
   },
-  pctFmt: {
-    text: (v: number) => fmt1p(v / 100),
-    zero: text.dim,
-    max: ansis.bold.blue,
-    scale: scales.timeScale,
-  },
-  errFmt: {
-    text: (v: number) => v.toString(),
-    zero: text.dim,
-    max: ansis.bold.red,
+  errors: {
+    icon: icons.error,
+    unit: '',
     scale: scales.errorScale,
+    color: text.error,
+    formatter: (v: number) => v.toString(),
   },
-  warnFmt: {
-    text: (v: number) => v.toString(),
-    zero: text.dim,
-    max: ansis.bold.yellow,
+  warnings: {
+    icon: icons.warning,
+    unit: '',
     scale: scales.warnScale,
+    color: text.label,
+    formatter: (v: number) => v.toString(),
   },
 } as const;
 
-// Generate all metric formatters in one pass
-const fmt = Object.fromEntries(
-  (Object.keys(metricConfig) as Array<keyof typeof metricConfig>).map((key) => {
-    const { text: textFn, zero, max, scale } = metricConfig[key];
-    return [
-      key,
-      (value: number, maxValue: number) => {
-        const formattedText = textFn(value);
-        if (value === 0) return zero(formattedText);
-        if (value === maxValue) return max(formattedText);
-        const rgbColor = scale(value, maxValue);
-        return applyRgb(rgbColor, formattedText);
-      },
-    ];
-  })
-) as Record<keyof typeof metricConfig, (value: number, max: number) => string>;
+// Generate formatters from metrics configuration
+const formatters = Object.fromEntries(
+  Object.entries(metrics).map(([key, { formatter, scale, color }]) => [
+    key,
+    (value: number, maxValue: number) => {
+      const formattedText = formatter(value);
+      return graded(
+        value,
+        maxValue,
+        formattedText,
+        text.secondary,
+        (s: string) => text.bold(color(s)),
+        scale
+      );
+    },
+  ])
+) as Record<keyof typeof metrics, (value: number, max: number) => string>;
+
+// =============================================================================
+// TYPE SAFETY
+// =============================================================================
+
+export interface Theme {
+  text: typeof text;
+  icons: typeof icons;
+  formatters: typeof formatters;
+  scales: typeof scales;
+  metrics: typeof metrics;
+}
 
 // =============================================================================
 // MAIN THEME EXPORT
 // =============================================================================
 
-export const theme = {
+export const theme: Theme = {
   text,
   icons,
-  fmt,
+  formatters,
   scales,
+  metrics,
 } as const;
 
 export default theme;

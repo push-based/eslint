@@ -8,9 +8,9 @@
   "targets": {
     "stats": {
       "dependsOn": ["build"],
-      "command": "node {projectRoot}/dist/eslint-stats.js analyse",
+      "command": "node {projectRoot}/dist/eslint-stats.js",
       "options": {
-        "args": ["./eslint.stats.json"]
+        "forwardAllArgs": true
       }
     },
     "measure": {

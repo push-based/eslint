@@ -2,9 +2,8 @@ import { renderTable } from '../utils/markdown-table';
 import { max } from 'd3-array';
 import {
   formatTimeColored,
-  formatPercentageColored,
-  formatErrorCount,
-  formatWarningCount,
+  formatErrorCountWithFixable,
+  formatWarningCountWithFixable,
   formatFilePath,
   formatRuleId,
 } from './format';
@@ -20,14 +19,13 @@ import { sortEntries } from './sort';
 import { RootStatsNode } from '../parse';
 import { group } from 'd3-array';
 import { sparklineForFile } from './format';
-import { getStringWidth } from '../utils/string-width';
 import theme from './theme';
 
 function formatIdentifier(e: StatsRow, header: string): string {
   const base =
     header === 'Rule' || e.depth === 1
       ? formatRuleId(e.identifier)
-      : formatFilePath(e.identifier);
+      : formatFilePath(e.identifier, 25);
   return '  '.repeat(e.depth) + base;
 }
 
@@ -54,7 +52,6 @@ type CellExtras<T> = (entry: T) => string | undefined;
 
 type Maxima = {
   totalTime: number;
-  pct: number;
   err: number;
   warn: number;
 };
@@ -63,24 +60,25 @@ function formatRow(
   e: StatsRow,
   maxes: Maxima,
   header: string,
-  extra?: CellExtras<StatsRow>
+  extra?: CellExtras<StatsRow>,
+  maxTimeWidth?: number
 ) {
   const id = formatIdentifier(e, header);
   const time = formatTimeColored(e.totalTime, maxes.totalTime);
   const extraValue = extra ? extra(e) : undefined;
 
-  // Ensure consistent width for time cells with sparklines
+  // Format time cell with proper alignment
   let tcell: string;
   if (extraValue) {
-    // Create a fixed-width cell with sparkline on left and time on right
-    const timeStr = time;
-    const sparklineWidth = 6; // sparkline is padded to 6 chars
-    const timeWidth = getStringWidth(timeStr); // Get visual width accounting for ANSI codes
-    const totalWidth = 16; // Fixed total width for the time column
-    const availableSpace = totalWidth - sparklineWidth - timeWidth;
-    const spacing = Math.max(1, availableSpace); // At least 1 space
-
-    tcell = `${extraValue}${' '.repeat(spacing)}${timeStr}`;
+    // Left-pad the time to align with the longest time in the dataset
+    const paddedTime = maxTimeWidth
+      ? time.padStart(
+          maxTimeWidth +
+            time.length -
+            time.replace(/\u001b\[[0-9;]*m/g, '').length
+        )
+      : time;
+    tcell = `${extraValue} ${paddedTime}`;
   } else {
     tcell = time;
   }
@@ -88,9 +86,12 @@ function formatRow(
   return [
     id,
     tcell,
-    formatPercentageColored(e.pct, maxes.pct),
-    formatErrorCount(e.errorCount, maxes.err),
-    formatWarningCount(e.warningCount, maxes.warn),
+    formatErrorCountWithFixable(e.errorCount, e.errorsFixable, maxes.err),
+    formatWarningCountWithFixable(
+      e.warningCount,
+      e.warningsFixable,
+      maxes.warn
+    ),
   ];
 }
 
@@ -106,11 +107,14 @@ const VIEWS: Record<string, ViewConfig> = {
   rule: {
     filter: (r: StatsRow) => r.depth === 1,
     label: 'Rule',
-    transform: (rows: StatsRow[], totalTime: number) =>
-      rows.map((r: StatsRow) => ({
-        ...r,
-        pct: totalTime > 0 ? (r.totalTime / totalTime) * 100 : 0,
-      })),
+    transform: (rows: StatsRow[], totalTime: number) => {
+      // First filter to get only rule rows
+      const ruleRows = rows.filter((r): r is RuleRow => r.depth === 1);
+      // Aggregate rules by identifier
+      const aggregatedRules = aggregateRulesByIdentifier(ruleRows);
+      // Return aggregated rules without percentage calculations
+      return aggregatedRules;
+    },
   },
   file: {
     filter: (r: StatsRow) => r.depth === 0,
@@ -134,6 +138,34 @@ function limitEntries(
   return limit > 0 ? entries.slice(0, limit) : entries;
 }
 
+/**
+ * Aggregates rule entries by identifier, summing up their stats
+ * @param ruleRows Array of rule rows to aggregate
+ * @returns Array of aggregated rule rows
+ */
+function aggregateRulesByIdentifier(ruleRows: RuleRow[]): RuleRow[] {
+  const ruleMap = new Map<string, RuleRow>();
+
+  ruleRows.forEach((rule) => {
+    const existing = ruleMap.get(rule.identifier);
+    if (existing) {
+      // Aggregate the stats
+      existing.totalTime += rule.totalTime;
+      existing.errorCount += rule.errorCount;
+      existing.warningCount += rule.warningCount;
+      // Keep the depth and type consistent
+    } else {
+      // Create a new aggregated rule entry
+      ruleMap.set(rule.identifier, {
+        ...rule,
+        parent: 'aggregated', // Mark as aggregated
+      });
+    }
+  });
+
+  return Array.from(ruleMap.values());
+}
+
 // Pure table renderer for pre-formatted data - no sorting, no limiting
 function renderStatsTable(
   entries: StatsRow[],
@@ -144,14 +176,26 @@ function renderStatsTable(
   // Compute maxima
   const maxes: Maxima = {
     totalTime: max(entries, (d) => d.totalTime) ?? 1,
-    pct: max(entries, (d) => d.pct) ?? 1,
     err: max(entries, (d) => d.errorCount) ?? 1,
     warn: max(entries, (d) => d.warningCount) ?? 1,
   };
 
+  // Calculate maximum formatted time width for alignment
+  let maxTimeWidth = 0;
+  if (extraTimeCell === sparklineForFile) {
+    maxTimeWidth = Math.max(
+      ...entries.map((e) => {
+        const formattedTime = formatTimeColored(e.totalTime, maxes.totalTime);
+        // Remove ANSI codes to get actual character length
+        const strippedTime = formattedTime.replace(/\u001b\[[0-9;]*m/g, '');
+        return strippedTime.length;
+      })
+    );
+  }
+
   // Build rows using formatRow helper
   const rows = entries.map((e) =>
-    formatRow(e, maxes, headerLabel, extraTimeCell)
+    formatRow(e, maxes, headerLabel, extraTimeCell, maxTimeWidth)
   );
 
   return [
@@ -288,7 +332,6 @@ export function getTableHeaders(
   return [
     getFirstColumnHeader(),
     `${theme.icons.time} Time${arrow('totalTime')}`,
-    `%${arrow('totalTime')}`, // Percentage follows time sorting
     `${theme.icons.error} Errors${arrow('errorCount')}`,
     `${theme.icons.warning}  Warnings${arrow('warningCount')}`,
   ];

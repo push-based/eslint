@@ -11,15 +11,16 @@ import {
   renderInteractiveEsLintStatsView,
   loadStats,
 } from '../../../stats';
-import { readFileSync } from 'fs';
-import { ESLint } from 'eslint';
 import * as path from 'path';
+import { computeTotals } from '../../../parse/eslint-result-visitor';
+import { RootStatsNode } from '../../../parse/eslint-result-visitor';
 import {
-  computeTotals,
-  RootStatsNode,
-} from '../../../parse/eslint-result-visitor';
-import ansis from 'ansis';
+  formatTotalsLine,
+  TotalsData,
+  formatCommand,
+} from '../../../stats/format';
 import theme from '../../../stats/theme';
+import ansis from 'ansis';
 
 function initInteractiveState(argv: AnalyseArgs): InteractiveCommandState {
   const take = argv.take?.map((n: number | string) => Number(n)) ?? [10];
@@ -48,20 +49,17 @@ function initInteractiveState(argv: AnalyseArgs): InteractiveCommandState {
 }
 
 // Type-safe mapping function for internal options
+const sortFieldMap = {
+  time: 'totalTime',
+  error: 'errorCount',
+  warning: 'warningCount',
+  identifier: 'identifier',
+} as const;
+
 function mapSortByOptionToField(
   option: SortByOption
-): 'totalTime' | 'errorCount' {
-  switch (option) {
-    case 'time':
-      return 'totalTime';
-    case 'violations':
-      return 'errorCount';
-    default: {
-      // This should never happen due to exhaustive checking
-      const _exhaustive: never = option;
-      throw new Error(`Unhandled sort option: ${_exhaustive}`);
-    }
-  }
+): 'totalTime' | 'errorCount' | 'warningCount' | 'identifier' {
+  return sortFieldMap[option];
 }
 
 function convertInteractiveStateToEslintStatsViewState(
@@ -89,76 +87,32 @@ function convertInteractiveStateToEslintStatsViewState(
   };
 }
 
-function createTotalStatsLine(processedStats: RootStatsNode): string {
+function createTotalStatsLineWithoutCommand(
+  processedStats: RootStatsNode,
+  state?: InteractiveCommandState
+): string {
   const totals = computeTotals(processedStats.children);
+  const currentView = state ? groupByOptions[state.groupByIndex] : 'rule';
 
-  const formatTime = (time: number) => {
-    if (time >= 1000) return `${(time / 1000).toFixed(2)}s`;
-    return `${time.toFixed(2)}ms`;
-  };
-
-  const formatCount = (
-    count: number,
-    isError = false,
-    isWarning = false,
-    isFixable = false
-  ) => {
-    if (count === 0) return theme.text.dim(count.toString());
-    if (isError) return ansis.bold.red(count.toString());
-    if (isWarning) return ansis.bold.yellow(count.toString());
-    if (isFixable) return ansis.bold(theme.text.file(count.toString())); // Use bold file color (green) for fixable
-    return count.toString();
-  };
-
-  // Calculate other time (total - parse - rules - fix)
-  const otherTime = Math.max(
-    0,
-    totals.totalTime - totals.parseTime - totals.rulesTime - totals.fixTime
+  return formatTotalsLine(
+    totals as TotalsData,
+    currentView,
+    undefined,
+    undefined
   );
+}
 
-  // Group stats logically with colors and spacing - match table theme
-  const fileStats = `${theme.icons.file} ${ansis.bold(
-    theme.text.file(totals.fileCount)
-  )} files`;
-  const ruleStats = `${theme.icons.rule} ${ansis.bold(
-    theme.text.rule(totals.ruleCount)
-  )} rules`;
-  const timeStats = `${theme.icons.time} ${ansis.bold.blue(
-    formatTime(totals.totalTime)
-  )} ${theme.text.dim(`(parse: `)}${theme.text.file(
-    formatTime(totals.parseTime)
-  )}${theme.text.dim(`, rules: `)}${theme.text.rule(
-    formatTime(totals.rulesTime)
-  )}${theme.text.dim(`, fix: `)}${ansis.red(
-    formatTime(totals.fixTime)
-  )}${theme.text.dim(`, other: `)}${theme.text.dim(
-    formatTime(otherTime)
-  )}${theme.text.dim(`)`)}`;
-  const issueStats = `${theme.icons.error} ${formatCount(
-    totals.errorCount,
-    true
-  )} errors • ${theme.icons.warning} ${formatCount(
-    totals.warningCount,
-    false,
-    true
-  )} warnings`;
-  const fixStats =
-    totals.fixableErrorCount > 0 || totals.fixableWarningCount > 0
-      ? ` • ${theme.icons.fixable} ${formatCount(
-          totals.fixableErrorCount + totals.fixableWarningCount,
-          false,
-          false,
-          true
-        )} fixable`
-      : '';
-
-  // Split into two lines
-  const firstLine =
-    ansis.bold(`${theme.icons.total} Total: `) +
-    [fileStats, ruleStats, timeStats].join(' • ');
-  const secondLine = '         ' + issueStats + fixStats; // Indent to align with "Total: "
-
-  return firstLine + '\n' + secondLine;
+/**
+ * Creates a divider line that matches the length of the given text
+ * @param text The text to measure (with ANSI codes stripped)
+ * @returns A themed divider line matching the text length
+ */
+function createDividerForText(text: string): string {
+  const strippedLength = ansis.strip(text).length;
+  const pattern = '─┄';
+  const repetitions = Math.ceil(strippedLength / pattern.length);
+  const divider = pattern.repeat(repetitions).substring(0, strippedLength);
+  return theme.text.border(divider);
 }
 
 export async function analyseHandler(argv: AnalyseArgs): Promise<void> {
@@ -186,18 +140,29 @@ export async function analyseHandler(argv: AnalyseArgs): Promise<void> {
         detailedStats
       );
 
-      // Add total stats line before the table
-      const totalStatsLine = createTotalStatsLine(detailedStats);
-      console.log(totalStatsLine);
-      console.log('');
+      // Use consistent ordering: command, then totals (without command), then table
+      const commandLine = detailedStats.decodedCommand
+        ? formatCommand(detailedStats.decodedCommand)
+        : null;
+      const totalsOnly = createTotalStatsLineWithoutCommand(
+        detailedStats,
+        state
+      );
+
+      if (commandLine) {
+        console.log(commandLine);
+        console.log('');
+      }
+      console.log(createDividerForText(totalsOnly));
+      console.log(totalsOnly);
+      console.log(createDividerForText(totalsOnly));
       console.log(result.join('\n'));
       return;
     }
 
-    // For interactive mode, read and parse the raw lint results
-    const jsonContent = readFileSync(argv.file, 'utf-8');
-    const rawStats = JSON.parse(jsonContent) as ESLint.LintResult[];
-    startInteractiveSession(rawStats, state);
+    // For interactive mode, use loadStats to get file metadata
+    const processedStats = loadStats(argv.file);
+    startInteractiveSession(processedStats, state);
   } catch (error) {
     if (error instanceof Error) {
       console.error('Error message:', error.message);

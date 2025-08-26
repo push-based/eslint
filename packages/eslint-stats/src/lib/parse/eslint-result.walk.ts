@@ -31,9 +31,9 @@ export function walkEslintResult(
       warningCount: res.warningCount,
       fixableErrorCount: res.fixableErrorCount,
       fixableWarningCount: res.fixableWarningCount,
+      fixableCount: res.fixableErrorCount + res.fixableWarningCount,
       fixPasses: res.source ? 1 : 0,
       totalTime: total,
-      timePct: 0,
       fixTime: fix,
       parseTime: parse,
       rulesTime: 0,
@@ -75,7 +75,6 @@ export function walkEslintResult(
           errorCount: errs.length,
           warningCount: warns.length,
           totalTime,
-          timePct: 0,
         };
         file.rulesTime += totalTime;
         file.children.push(node);
