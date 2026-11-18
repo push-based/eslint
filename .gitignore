@@ -10,3 +10,7 @@ tmp
 coverage
 .vscode
 .idea
+
+# talk demo output
+profiles
+demo-fallback
